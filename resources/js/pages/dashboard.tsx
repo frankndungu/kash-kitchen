@@ -1,10 +1,10 @@
-// Professional dashboard.tsx with Lucide icons
+// Professional dashboard.tsx with error message display - FIXED
 // resources/js/pages/dashboard.tsx
 
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     Banknote,
@@ -13,6 +13,7 @@ import {
     ShoppingCart,
     Smartphone,
     TrendingUp,
+    X,
 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -59,6 +60,8 @@ export default function Dashboard({
     recentOrders,
     topSellingItems,
 }: DashboardProps) {
+    const pageProps = usePage().props as any;
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-KE', {
             style: 'currency',
@@ -71,6 +74,41 @@ export default function Dashboard({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+                {/* Flash Messages */}
+                {pageProps.flash?.error && (
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4">
+                        <div className="flex items-center space-x-2">
+                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                            <p className="text-red-800">
+                                {pageProps.flash.error}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="text-red-600 hover:text-red-800"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
+                {pageProps.flash?.success && (
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4">
+                        <div className="flex items-center space-x-2">
+                            <ShoppingCart className="h-5 w-5 text-green-600" />
+                            <p className="text-green-800">
+                                {pageProps.flash.success}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="text-green-600 hover:text-green-800"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
                 {/* Welcome Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
