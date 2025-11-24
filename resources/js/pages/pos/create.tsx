@@ -1,19 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    Clock,
-    DollarSign,
-    MapPin,
-    Minus,
-    Phone,
-    Plus,
-    ShoppingCart,
-    Trash2,
-    User,
-} from 'lucide-react';
-import { useState } from 'react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { ArrowLeft, Clock, Minus, Plus, ShoppingCart } from 'lucide-react';
+import React, { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,64 +15,232 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-interface Category {
-    id: number;
-    name: string;
-    slug: string;
-    color: string;
-    icon: string;
-    activeMenuItems: MenuItem[];
-}
+const paymentBreadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'POS System',
+        href: '/pos',
+    },
+    {
+        title: 'New Order',
+        href: '/pos/create',
+    },
+    {
+        title: 'Process Payment',
+        href: '#',
+    },
+];
 
 interface MenuItem {
     id: number;
     name: string;
     price: number;
-    description: string | null;
+    description?: string;
     is_combo: boolean;
-    requires_kitchen: boolean;
     preparation_time_minutes: number;
+    image_url?: string;
+}
+
+interface Category {
+    id: number;
+    name: string;
+    slug: string;
+    color: string;
 }
 
 interface CartItem {
-    menuItem: MenuItem;
+    menu_item_id: number;
+    name: string;
+    price: number;
     quantity: number;
     special_instructions?: string;
 }
 
+interface Order {
+    id: number;
+    order_number: string;
+    order_type: string;
+    customer_name: string | null;
+    customer_phone: string | null;
+    subtotal: number;
+    tax_amount: number;
+    discount_amount: number;
+    total_amount: number;
+    payment_method: string;
+    payment_status: string;
+    mpesa_reference: string | null;
+    order_status: string;
+    items: Array<{
+        id: number;
+        quantity: number;
+        unit_price: number;
+        item_total: number;
+        menu_item: MenuItem;
+    }>;
+}
+
 interface CreateOrderProps {
-    user: {
-        name: string;
-        email: string;
-    };
+    user: { name: string; email: string };
     categories: Category[];
     orderTypes: string[];
     paymentMethods: string[];
 }
 
-export default function Create({
+export default function CreateOrder({
     user,
     categories,
     orderTypes,
     paymentMethods,
 }: CreateOrderProps) {
-    const [activeCategory, setActiveCategory] = useState(
-        categories[0]?.id || 0,
+    const [selectedCategory, setSelectedCategory] = useState<number | null>(
+        null,
     );
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+    const [loadingItems, setLoadingItems] = useState(false);
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [orderCreated, setOrderCreated] = useState(false);
+    const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
         order_type: 'dine_in',
         customer_name: '',
         customer_phone: '',
-        table_number: '',
         payment_method: 'cash',
+        mpesa_reference: '',
         items: [] as Array<{
             menu_item_id: number;
             quantity: number;
-            special_instructions: string;
+            special_instructions?: string;
         }>,
     });
+
+    const loadMenuItems = async (categoryId: number) => {
+        setLoadingItems(true);
+        try {
+            const response = await fetch(`/pos/menu-items/${categoryId}`);
+            const responseData = await response.json();
+            setMenuItems(responseData.menu_items);
+            setSelectedCategory(categoryId);
+        } catch (error) {
+            console.error('Failed to load menu items:', error);
+        } finally {
+            setLoadingItems(false);
+        }
+    };
+
+    const addToCart = (menuItem: MenuItem) => {
+        const existingItem = cart.find(
+            (item) => item.menu_item_id === menuItem.id,
+        );
+
+        if (existingItem) {
+            setCart(
+                cart.map((item) =>
+                    item.menu_item_id === menuItem.id
+                        ? { ...item, quantity: item.quantity + 1 }
+                        : item,
+                ),
+            );
+        } else {
+            setCart([
+                ...cart,
+                {
+                    menu_item_id: menuItem.id,
+                    name: menuItem.name,
+                    price: menuItem.price,
+                    quantity: 1,
+                },
+            ]);
+        }
+    };
+
+    const updateQuantity = (menuItemId: number, newQuantity: number) => {
+        if (newQuantity === 0) {
+            setCart(cart.filter((item) => item.menu_item_id !== menuItemId));
+        } else {
+            setCart(
+                cart.map((item) =>
+                    item.menu_item_id === menuItemId
+                        ? { ...item, quantity: newQuantity }
+                        : item,
+                ),
+            );
+        }
+    };
+
+    const calculateTotal = () => {
+        return cart.reduce(
+            (total, item) => total + item.price * item.quantity,
+            0,
+        );
+    };
+
+    const handleCreateOrder = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const orderItems = cart.map((item) => ({
+            menu_item_id: item.menu_item_id,
+            quantity: item.quantity,
+            special_instructions: item.special_instructions,
+        }));
+
+        // Submit using router.post to avoid TypeScript issues
+        const formData = {
+            order_type: data.order_type,
+            customer_name: data.customer_name,
+            customer_phone: data.customer_phone,
+            payment_method: data.payment_method,
+            items: orderItems,
+        };
+
+        router.post('/pos', formData, {
+            onSuccess: (page) => {
+                console.log('Order creation successful:', page.props);
+                setOrderCreated(true);
+                setCreatedOrder(page.props.order as Order);
+            },
+            onError: (errors) => {
+                console.error('Order creation failed:', errors);
+            },
+        });
+    };
+
+    const handlePayment = () => {
+        // Generate transaction ID for cash payments
+        const transactionId =
+            data.payment_method === 'cash'
+                ? `CASH-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+                : data.mpesa_reference;
+
+        // Update order with payment details
+        // This would be a separate API call to update payment status
+        console.log('Processing payment:', {
+            orderId: createdOrder?.id,
+            paymentMethod: data.payment_method,
+            transactionId: transactionId,
+            amount: calculateTotal(),
+        });
+
+        // For demo purposes, we'll simulate payment success
+        alert(
+            `Payment processed successfully! Transaction ID: ${transactionId}`,
+        );
+    };
+
+    const resetOrder = () => {
+        setCart([]);
+        setOrderCreated(false);
+        setCreatedOrder(null);
+        setSelectedCategory(null);
+        setMenuItems([]);
+        setData({
+            order_type: 'dine_in',
+            customer_name: '',
+            customer_phone: '',
+            payment_method: 'cash',
+            mpesa_reference: '',
+            items: [],
+        });
+    };
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-KE', {
@@ -93,174 +250,307 @@ export default function Create({
         }).format(amount);
     };
 
-    const addToCart = (menuItem: MenuItem) => {
-        setCart((prevCart) => {
-            const existingItem = prevCart.find(
-                (item) => item.menuItem.id === menuItem.id,
-            );
-            if (existingItem) {
-                return prevCart.map((item) =>
-                    item.menuItem.id === menuItem.id
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item,
-                );
-            } else {
-                return [...prevCart, { menuItem, quantity: 1 }];
-            }
-        });
-    };
+    const selectedCategoryName = categories.find(
+        (cat) => cat.id === selectedCategory,
+    )?.name;
 
-    const updateCartQuantity = (menuItemId: number, newQuantity: number) => {
-        if (newQuantity <= 0) {
-            removeFromCart(menuItemId);
-            return;
-        }
-        setCart((prevCart) =>
-            prevCart.map((item) =>
-                item.menuItem.id === menuItemId
-                    ? { ...item, quantity: newQuantity }
-                    : item,
-            ),
+    // If order is created, show payment interface
+    if (orderCreated && createdOrder) {
+        return (
+            <AppLayout breadcrumbs={paymentBreadcrumbs}>
+                <Head title="Process Payment" />
+
+                <div className="min-h-screen bg-gray-100 p-6">
+                    <div className="mx-auto max-w-2xl">
+                        <div className="rounded-lg bg-white p-6">
+                            <div className="mb-6 text-center">
+                                <h1 className="mb-2 text-2xl font-bold text-green-600">
+                                    Order Created Successfully!
+                                </h1>
+                                <p className="text-gray-600">
+                                    Order #{createdOrder.order_number} | Total:{' '}
+                                    {formatCurrency(calculateTotal())}
+                                </p>
+                            </div>
+
+                            {/* Order Summary */}
+                            <div className="mb-6 rounded-lg bg-gray-50 p-4">
+                                <h3 className="mb-3 font-semibold">
+                                    Order Summary
+                                </h3>
+                                {cart.map((item) => (
+                                    <div
+                                        key={item.menu_item_id}
+                                        className="flex items-center justify-between py-2"
+                                    >
+                                        <span>
+                                            {item.name} x{item.quantity}
+                                        </span>
+                                        <span className="font-semibold">
+                                            {formatCurrency(
+                                                item.price * item.quantity,
+                                            )}
+                                        </span>
+                                    </div>
+                                ))}
+                                <div className="mt-2 border-t pt-2">
+                                    <div className="flex items-center justify-between text-lg font-bold">
+                                        <span>Total:</span>
+                                        <span className="text-green-600">
+                                            {formatCurrency(calculateTotal())}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Payment Method Selection */}
+                            <div className="mb-6">
+                                <h3 className="mb-3 font-semibold">
+                                    Payment Method
+                                </h3>
+                                <div className="space-y-3">
+                                    <label className="flex cursor-pointer items-center rounded-lg border p-3 hover:bg-gray-50">
+                                        <input
+                                            type="radio"
+                                            value="cash"
+                                            checked={
+                                                data.payment_method === 'cash'
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    'payment_method',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mr-3"
+                                        />
+                                        <div>
+                                            <p className="font-medium">
+                                                Cash Payment
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                                Transaction ID will be generated
+                                                automatically
+                                            </p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex cursor-pointer items-center rounded-lg border p-3 hover:bg-gray-50">
+                                        <input
+                                            type="radio"
+                                            value="mpesa"
+                                            checked={
+                                                data.payment_method === 'mpesa'
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    'payment_method',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mr-3"
+                                        />
+                                        <div>
+                                            <p className="font-medium">
+                                                M-Pesa Payment
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                                Customer pays via M-Pesa, enter
+                                                transaction ID below
+                                            </p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* M-Pesa Transaction ID Input */}
+                            {data.payment_method === 'mpesa' && (
+                                <div className="mb-6">
+                                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        M-Pesa Transaction ID
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter M-Pesa transaction ID (e.g., QHR41H9K2C)"
+                                        value={data.mpesa_reference}
+                                        onChange={(e) =>
+                                            setData(
+                                                'mpesa_reference',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                        required
+                                    />
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Customer will provide this after
+                                        completing M-Pesa payment
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={handlePayment}
+                                    disabled={
+                                        data.payment_method === 'mpesa' &&
+                                        !data.mpesa_reference
+                                    }
+                                    className="flex-1 rounded-lg bg-green-600 py-3 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Complete Payment
+                                </button>
+
+                                <button
+                                    onClick={resetOrder}
+                                    className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50"
+                                >
+                                    New Order
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </AppLayout>
         );
-    };
-
-    const removeFromCart = (menuItemId: number) => {
-        setCart((prevCart) =>
-            prevCart.filter((item) => item.menuItem.id !== menuItemId),
-        );
-    };
-
-    const getCartTotal = () => {
-        const subtotal = cart.reduce(
-            (total, item) => total + item.menuItem.price * item.quantity,
-            0,
-        );
-        const tax = subtotal * 0.16; // 16% VAT
-        return { subtotal, tax, total: subtotal + tax };
-    };
-
-    const submitOrder = () => {
-        const orderItems = cart.map((item) => ({
-            menu_item_id: item.menuItem.id,
-            quantity: item.quantity,
-            special_instructions: item.special_instructions || '',
-        }));
-
-        // update the form data with items, then submit
-        setData('items', orderItems);
-
-        post('/pos', {
-            onSuccess: () => {
-                setCart([]);
-                reset();
-            },
-        });
-    };
-
-    const activeMenuItems =
-        categories.find((cat) => cat.id === activeCategory)?.activeMenuItems ||
-        [];
-    const totals = getCartTotal();
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Order" />
+            <Head title="New Order" />
 
-            <div className="p-4">
-                {/* Header */}
-                <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <Link
-                            href="/pos"
-                            className="flex items-center text-gray-600 hover:text-gray-900"
-                        >
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Orders
-                        </Link>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            New Order
-                        </h1>
+            <div className="flex h-screen bg-gray-100">
+                {/* Main Menu Area */}
+                <div className="flex-1 p-6">
+                    {/* Header */}
+                    <div className="mb-6 flex items-center justify-between">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                New Order
+                            </h1>
+                            <p className="text-gray-600">
+                                Cashier: {user.name}
+                            </p>
+                        </div>
+                        {selectedCategory && (
+                            <button
+                                onClick={() => {
+                                    setSelectedCategory(null);
+                                    setMenuItems([]);
+                                }}
+                                className="flex items-center text-blue-600 hover:text-blue-800"
+                            >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Categories
+                            </button>
+                        )}
                     </div>
-                    <div className="text-sm text-gray-500">
-                        Cashier: {user.name}
-                    </div>
-                </div>
 
-                <div className="flex h-full gap-4">
-                    {/* Left Panel - Menu */}
-                    <div className="flex-1 rounded-xl border border-sidebar-border/70 bg-white">
-                        {/* Category Tabs */}
-                        <div className="border-b p-4">
-                            <div className="flex flex-wrap gap-2">
+                    {/* Categories or Menu Items */}
+                    {!selectedCategory ? (
+                        <div>
+                            <h2 className="mb-4 text-lg font-semibold">
+                                Select Category
+                            </h2>
+                            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                                 {categories.map((category) => (
                                     <button
                                         key={category.id}
                                         onClick={() =>
-                                            setActiveCategory(category.id)
+                                            loadMenuItems(category.id)
                                         }
-                                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                                            activeCategory === category.id
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
+                                        className="rounded-xl border-2 border-gray-200 p-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
                                     >
-                                        {category.name}
+                                        <h3 className="font-semibold text-gray-900">
+                                            {category.name}
+                                        </h3>
                                     </button>
                                 ))}
                             </div>
                         </div>
+                    ) : (
+                        <div>
+                            <h2 className="mb-4 text-lg font-semibold">
+                                {selectedCategoryName}
+                            </h2>
 
-                        {/* Menu Items Grid */}
-                        <div className="grid grid-cols-2 gap-4 p-4 md:grid-cols-3 lg:grid-cols-4">
-                            {activeMenuItems.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
-                                    onClick={() => addToCart(item)}
-                                >
-                                    <div className="mb-2">
-                                        <h3 className="font-medium text-gray-900">
-                                            {item.name}
-                                        </h3>
-                                        <p className="line-clamp-2 text-sm text-gray-500">
-                                            {item.description}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-lg font-bold text-green-600">
-                                            {formatCurrency(item.price)}
-                                        </span>
-                                        {item.requires_kitchen && (
-                                            <div className="flex items-center text-xs text-orange-600">
-                                                <Clock className="mr-1 h-3 w-3" />
-                                                {item.preparation_time_minutes}m
-                                            </div>
-                                        )}
-                                    </div>
-                                    {item.is_combo && (
-                                        <span className="mt-1 inline-block rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
-                                            Combo
-                                        </span>
-                                    )}
+                            {loadingItems ? (
+                                <div className="py-12 text-center">
+                                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                                    <p className="mt-2 text-gray-600">
+                                        Loading menu items...
+                                    </p>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {menuItems.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+                                        >
+                                            <div className="mb-2 flex items-start justify-between">
+                                                <h3 className="font-semibold text-gray-900">
+                                                    {item.name}
+                                                </h3>
+                                                {item.is_combo && (
+                                                    <span className="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-800">
+                                                        Combo
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {item.description && (
+                                                <p className="mb-3 text-sm text-gray-600">
+                                                    {item.description}
+                                                </p>
+                                            )}
+
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-lg font-bold text-green-600">
+                                                        {formatCurrency(
+                                                            item.price,
+                                                        )}
+                                                    </p>
+                                                    <div className="flex items-center text-xs text-gray-500">
+                                                        <Clock className="mr-1 h-3 w-3" />
+                                                        {
+                                                            item.preparation_time_minutes
+                                                        }{' '}
+                                                        min
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    onClick={() =>
+                                                        addToCart(item)
+                                                    }
+                                                    className="flex items-center rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
+                                                >
+                                                    <Plus className="mr-1 h-4 w-4" />
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
+                    )}
+                </div>
+
+                {/* Order Details Sidebar */}
+                <div className="w-96 border-l border-gray-200 bg-white p-6">
+                    <div className="mb-6 flex items-center">
+                        <ShoppingCart className="mr-2 h-6 w-6 text-gray-700" />
+                        <h2 className="text-lg font-semibold">Order Details</h2>
                     </div>
 
-                    {/* Right Panel - Cart & Checkout */}
-                    <div className="w-96 rounded-xl border border-sidebar-border/70 bg-white">
-                        <div className="border-b p-4">
-                            <div className="flex items-center space-x-2">
-                                <ShoppingCart className="h-5 w-5" />
-                                <h2 className="text-lg font-semibold">
-                                    Order Details
-                                </h2>
-                            </div>
-                        </div>
-
-                        {/* Order Type Selection */}
-                        <div className="border-b p-4">
-                            <label className="mb-2 block text-sm font-medium">
+                    <form onSubmit={handleCreateOrder} className="space-y-4">
+                        {/* Order Type */}
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">
                                 Order Type
                             </label>
                             <select
@@ -276,203 +566,164 @@ export default function Create({
                             </select>
                         </div>
 
-                        {/* Customer Info */}
-                        <div className="border-b p-4">
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium">
-                                        Customer Name
-                                    </label>
-                                    <div className="relative">
-                                        <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={data.customer_name}
-                                            onChange={(e) =>
-                                                setData(
-                                                    'customer_name',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="w-full rounded-lg border border-gray-300 py-2 pr-3 pl-10"
-                                            placeholder="Enter name (optional)"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium">
-                                        Phone Number
-                                    </label>
-                                    <div className="relative">
-                                        <Phone className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={data.customer_phone}
-                                            onChange={(e) =>
-                                                setData(
-                                                    'customer_phone',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="w-full rounded-lg border border-gray-300 py-2 pr-3 pl-10"
-                                            placeholder="0712345678"
-                                        />
-                                    </div>
-                                </div>
-
-                                {data.order_type === 'dine_in' && (
-                                    <div>
-                                        <label className="mb-1 block text-sm font-medium">
-                                            Table Number
-                                        </label>
-                                        <div className="relative">
-                                            <MapPin className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                value={data.table_number}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        'table_number',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                className="w-full rounded-lg border border-gray-300 py-2 pr-3 pl-10"
-                                                placeholder="Table 1"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                        {/* Customer Details */}
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Customer Name (optional)"
+                                value={data.customer_name}
+                                onChange={(e) =>
+                                    setData('customer_name', e.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                            />
                         </div>
 
-                        {/* Cart Items */}
-                        <div className="max-h-64 overflow-y-auto p-4">
-                            {cart.length === 0 ? (
-                                <p className="py-8 text-center text-gray-500">
-                                    Select items from the menu to start an order
-                                </p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {cart.map((item) => (
-                                        <div
-                                            key={item.menuItem.id}
-                                            className="flex items-center justify-between rounded border p-2"
-                                        >
-                                            <div className="flex-1">
-                                                <h4 className="font-medium">
-                                                    {item.menuItem.name}
-                                                </h4>
-                                                <p className="text-sm text-gray-500">
-                                                    {formatCurrency(
-                                                        item.menuItem.price,
-                                                    )}{' '}
-                                                    each
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() =>
-                                                        updateCartQuantity(
-                                                            item.menuItem.id,
-                                                            item.quantity - 1,
-                                                        )
-                                                    }
-                                                    className="flex h-6 w-6 items-center justify-center rounded bg-gray-100 hover:bg-gray-200"
-                                                >
-                                                    <Minus className="h-3 w-3" />
-                                                </button>
-                                                <span className="w-8 text-center font-medium">
-                                                    {item.quantity}
-                                                </span>
-                                                <button
-                                                    onClick={() =>
-                                                        updateCartQuantity(
-                                                            item.menuItem.id,
-                                                            item.quantity + 1,
-                                                        )
-                                                    }
-                                                    className="flex h-6 w-6 items-center justify-center rounded bg-gray-100 hover:bg-gray-200"
-                                                >
-                                                    <Plus className="h-3 w-3" />
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        removeFromCart(
-                                                            item.menuItem.id,
-                                                        )
-                                                    }
-                                                    className="flex h-6 w-6 items-center justify-center rounded bg-red-100 text-red-600 hover:bg-red-200"
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Phone Number"
+                                value={data.customer_phone}
+                                onChange={(e) =>
+                                    setData('customer_phone', e.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                            />
                         </div>
 
-                        {/* Order Summary & Checkout */}
-                        {cart.length > 0 && (
-                            <div className="border-t p-4">
-                                <div className="mb-4 space-y-2">
-                                    <div className="flex justify-between">
-                                        <span>Subtotal:</span>
-                                        <span>
-                                            {formatCurrency(totals.subtotal)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>VAT (16%):</span>
-                                        <span>
-                                            {formatCurrency(totals.tax)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                                        <span>Total:</span>
-                                        <span>
-                                            {formatCurrency(totals.total)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Payment Method */}
-                                <div className="mb-4">
-                                    <label className="mb-2 block text-sm font-medium">
-                                        Payment Method
-                                    </label>
-                                    <select
-                                        value={data.payment_method}
+                        {/* Payment Method Selection */}
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                                Payment Method
+                            </label>
+                            <div className="space-y-2">
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        value="cash"
+                                        checked={data.payment_method === 'cash'}
                                         onChange={(e) =>
                                             setData(
                                                 'payment_method',
                                                 e.target.value,
                                             )
                                         }
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                                    >
-                                        <option value="cash">Cash</option>
-                                        <option value="mpesa">M-Pesa</option>
-                                    </select>
-                                </div>
-
-                                {/* Submit Button */}
-                                <button
-                                    onClick={submitOrder}
-                                    disabled={processing || cart.length === 0}
-                                    className="flex w-full items-center justify-center space-x-2 rounded-lg bg-green-600 px-4 py-3 text-white hover:bg-green-700 disabled:opacity-50"
-                                >
-                                    <DollarSign className="h-4 w-4" />
-                                    <span>
-                                        {processing
-                                            ? 'Processing...'
-                                            : `Confirm Order (${formatCurrency(totals.total)})`}
+                                        className="mr-2"
+                                        required
+                                    />
+                                    <span className="text-sm">
+                                        Cash Payment
                                     </span>
-                                </button>
+                                </label>
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        value="mpesa"
+                                        checked={
+                                            data.payment_method === 'mpesa'
+                                        }
+                                        onChange={(e) =>
+                                            setData(
+                                                'payment_method',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mr-2"
+                                        required
+                                    />
+                                    <span className="text-sm">
+                                        M-Pesa Payment
+                                    </span>
+                                </label>
                             </div>
-                        )}
-                    </div>
+                        </div>
+
+                        {/* Cart Items */}
+                        <div className="border-t pt-4">
+                            <h3 className="mb-3 font-medium">Order Items</h3>
+
+                            {cart.length === 0 ? (
+                                <p className="py-8 text-center text-gray-500">
+                                    Select items from the menu to start an order
+                                </p>
+                            ) : (
+                                <div className="max-h-60 space-y-3 overflow-y-auto">
+                                    {cart.map((item) => (
+                                        <div
+                                            key={item.menu_item_id}
+                                            className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                                        >
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium">
+                                                    {item.name}
+                                                </p>
+                                                <p className="font-semibold text-green-600">
+                                                    {formatCurrency(item.price)}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        updateQuantity(
+                                                            item.menu_item_id,
+                                                            item.quantity - 1,
+                                                        )
+                                                    }
+                                                    className="rounded p-1 text-red-600 hover:bg-red-100"
+                                                >
+                                                    <Minus className="h-4 w-4" />
+                                                </button>
+
+                                                <span className="min-w-8 text-center font-medium">
+                                                    {item.quantity}
+                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        updateQuantity(
+                                                            item.menu_item_id,
+                                                            item.quantity + 1,
+                                                        )
+                                                    }
+                                                    className="rounded p-1 text-green-600 hover:bg-green-100"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Total */}
+                            {cart.length > 0 && (
+                                <div className="mt-4 border-t pt-4">
+                                    <div className="flex items-center justify-between text-lg font-bold">
+                                        <span>Total:</span>
+                                        <span className="text-green-600">
+                                            {formatCurrency(calculateTotal())}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={cart.length === 0 || processing}
+                            className="w-full rounded-lg bg-blue-600 py-3 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {processing ? 'Creating Order...' : 'Create Order'}
+                        </button>
+
+                        <p className="text-center text-xs text-gray-500">
+                            Payment will be processed after order creation
+                        </p>
+                    </form>
                 </div>
             </div>
         </AppLayout>

@@ -24,7 +24,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // POS System - Only Admin, Manager, and Cashier can access
     Route::middleware('role:admin,manager,cashier')->group(function () {
-        Route::resource('pos', POSController::class);
+        Route::get('pos', [POSController::class, 'index'])->name('pos.index');
+        Route::get('pos/create', [POSController::class, 'create'])->name('pos.create');
+        Route::post('pos', [POSController::class, 'store'])->name('pos.store');
+        Route::get('pos/{order}', [POSController::class, 'show'])->name('pos.show');
+        Route::get('pos/{order}/edit', [POSController::class, 'edit'])->name('pos.edit');
+        Route::put('pos/{order}', [POSController::class, 'update'])->name('pos.update');
+        Route::delete('pos/{order}', [POSController::class, 'destroy'])->name('pos.destroy');
+        
+        Route::get('pos/menu-items/{categoryId}', [POSController::class, 'getMenuItems'])->name('pos.menu-items');
+        Route::post('pos/{order}/payment', [POSController::class, 'processPayment'])->name('pos.payment');
     });
 
     // Role Management - Admin only

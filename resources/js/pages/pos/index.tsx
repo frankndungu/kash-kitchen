@@ -31,6 +31,7 @@ interface Order {
     items_count: number;
     payment_method: string;
     payment_status: string;
+    mpesa_reference: string | null;
 }
 
 interface IndexProps {
@@ -67,6 +68,19 @@ export default function Index({ user, orders, filters }: IndexProps) {
             ready: 'bg-green-100 text-green-800',
             completed: 'bg-gray-100 text-gray-800',
             cancelled: 'bg-red-100 text-red-800',
+        };
+
+        return (
+            styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+        );
+    };
+
+    const getPaymentStatusBadge = (status: string) => {
+        const styles = {
+            pending: 'bg-orange-100 text-orange-800',
+            paid: 'bg-green-100 text-green-800',
+            failed: 'bg-red-100 text-red-800',
+            refunded: 'bg-gray-100 text-gray-800',
         };
 
         return (
@@ -242,6 +256,15 @@ export default function Index({ user, orders, filters }: IndexProps) {
                                         Amount
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                        Payment Method
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                        Payment Status
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                        Transaction ID
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                                         Time
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
@@ -297,8 +320,40 @@ export default function Index({ user, orders, filters }: IndexProps) {
                                                     order.total_amount,
                                                 )}
                                             </div>
-                                            <div className="text-xs text-gray-500 capitalize">
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-sm font-medium text-gray-900 capitalize">
                                                 {order.payment_method}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPaymentStatusBadge(order.payment_status)}`}
+                                            >
+                                                {order.payment_status ===
+                                                    'paid' && (
+                                                    <CheckCircle className="mr-1 h-3 w-3" />
+                                                )}
+                                                {order.payment_status ===
+                                                    'pending' && (
+                                                    <Clock className="mr-1 h-3 w-3" />
+                                                )}
+                                                <span className="capitalize">
+                                                    {order.payment_status}
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-xs text-gray-500">
+                                                {order.mpesa_reference ? (
+                                                    <div className="font-mono">
+                                                        {order.mpesa_reference}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400">
+                                                        —
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
