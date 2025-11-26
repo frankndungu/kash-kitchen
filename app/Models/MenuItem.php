@@ -101,4 +101,15 @@ class MenuItem extends Model
     {
         return $this->profit_margin !== null && $this->profit_margin < $threshold;
     }
+
+    public function menuItemIngredients()
+    {
+        return $this->hasMany(MenuItemIngredient::class);
+    }
+
+    public function inventoryItems()
+    {
+        return $this->belongsToMany(InventoryItem::class, 'menu_item_ingredients')
+                    ->withPivot('quantity_needed', 'unit_of_measure', 'cost_per_serving', 'is_critical');
+    }
 }

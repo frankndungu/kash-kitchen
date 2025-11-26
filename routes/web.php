@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\POSController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\InventoryController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -42,6 +43,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
         Route::patch('/roles/users/{user}', [RoleController::class, 'updateUserRoles'])->name('roles.users.update');
+    });
+
+    // Inventory Management - Admin and Manager only
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+        Route::get('inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
+        Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::get('inventory/{inventoryItem}', [InventoryController::class, 'show'])->name('inventory.show');
+        Route::get('inventory/{inventoryItem}/edit', [InventoryController::class, 'edit'])->name('inventory.edit');
+        Route::put('inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
+        
+        // Stock Management Actions
+        Route::post('inventory/{inventoryItem}/adjust-stock', [InventoryController::class, 'adjustStock'])->name('inventory.adjust-stock');
+        Route::post('inventory/{inventoryItem}/add-stock', [InventoryController::class, 'addStock'])->name('inventory.add-stock');
+        
+        // Reports
+        Route::get('inventory/reports/low-stock', [InventoryController::class, 'lowStockReport'])->name('inventory.low-stock-report');
     });
     
     // Future routes ready for expansion:

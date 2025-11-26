@@ -17,6 +17,7 @@ import {
     BookOpen,
     Folder,
     LayoutGrid,
+    Package, // Added this import
     Shield,
     ShoppingCart,
 } from 'lucide-react';
@@ -32,6 +33,11 @@ const mainNavItems: NavItem[] = [
         title: 'POS System',
         href: '/pos',
         icon: ShoppingCart,
+    },
+    {
+        title: 'Inventory Management', // Added this new menu item
+        href: '/inventory',
+        icon: Package,
     },
     {
         title: 'Role Management',
