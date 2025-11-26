@@ -1,17 +1,16 @@
-// Professional dashboard.tsx with error message display - FIXED
-// resources/js/pages/dashboard.tsx
-
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
-    Banknote,
+    ChefHat,
     Clock,
     DollarSign,
+    Eye,
+    Package,
+    Plus,
     ShoppingCart,
-    Smartphone,
     TrendingUp,
     X,
 } from 'lucide-react';
@@ -29,36 +28,42 @@ interface DashboardProps {
         email: string;
         role: string;
     };
-    stats: {
-        todaySales: number;
-        ordersToday: number;
-        pendingOrders: number;
-        cashInDrawer: number;
-        mpesaSales: number;
-        lowStockCount: number;
+    todayStats: {
+        sales: number;
+        orders: number;
+        cashTotal: number;
+        mpesaTotal: number;
     };
-    recentOrders: Array<{
+    activeOrders: Array<{
         id: number;
         order_number: string;
         customer_name: string | null;
         total_amount: number;
         order_status: string;
         created_at: string;
-        items_summary: string;
+        items_count: number;
+        time_elapsed: number; // minutes since created
     }>;
-    topSellingItems: Array<{
-        rank: number;
-        name: string;
-        orders_count: number;
-        revenue: number;
-    }>;
+    criticalAlerts: {
+        lowStockCount: number;
+        outOfStockCount: number;
+        pendingOrders: number;
+        longWaitOrders: number; // orders taking >30 mins
+    };
+    quickStats: {
+        averageOrderTime: number;
+        peakHourSales: number;
+        staffOnDuty: number;
+        inventoryValue: number;
+    };
 }
 
 export default function Dashboard({
     user,
-    stats,
-    recentOrders,
-    topSellingItems,
+    todayStats,
+    activeOrders,
+    criticalAlerts,
+    quickStats,
 }: DashboardProps) {
     const pageProps = usePage().props as any;
 
@@ -70,9 +75,37 @@ export default function Dashboard({
         }).format(amount);
     };
 
+    const getOrderStatusColor = (status: string) => {
+        switch (status) {
+            case 'confirmed':
+                return 'bg-blue-100 text-blue-800';
+            case 'preparing':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'ready':
+                return 'bg-green-100 text-green-800';
+            case 'completed':
+                return 'bg-gray-100 text-gray-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const getOrderPriority = (timeElapsed: number) => {
+        if (timeElapsed > 30) return 'border-red-200 bg-red-50';
+        if (timeElapsed > 20) return 'border-orange-200 bg-orange-50';
+        return 'border-gray-200 bg-white';
+    };
+
+    const getCurrentShift = () => {
+        const hour = new Date().getHours();
+        if (hour >= 6 && hour < 14) return 'Morning Shift';
+        if (hour >= 14 && hour < 22) return 'Evening Shift';
+        return 'Night Shift';
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dashboard" />
+            <Head title="Operations Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 {/* Flash Messages */}
                 {pageProps.flash?.error && (
@@ -109,227 +142,375 @@ export default function Dashboard({
                     </div>
                 )}
 
-                {/* Welcome Header */}
+                {/* Header with Quick Actions */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">
-                            Welcome back, {user.name}
+                            Good{' '}
+                            {new Date().getHours() < 12
+                                ? 'Morning'
+                                : new Date().getHours() < 18
+                                  ? 'Afternoon'
+                                  : 'Evening'}
+                            , {user.name}
                         </h1>
                         <p className="text-gray-600">
-                            {user.role} • Kash Kitchen POS
+                            {user.role} • {getCurrentShift()} • Kash Kitchen
+                            Operations
                         </p>
                     </div>
-                    <div className="text-right text-sm text-gray-500">
-                        {new Date().toLocaleDateString('en-KE', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                        })}
+                    <div className="flex space-x-3">
+                        <Link
+                            href="/pos/create"
+                            className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                        >
+                            <Plus className="h-4 w-4" />
+                            <span>New Order</span>
+                        </Link>
+                        <Link
+                            href="/sales-analytics"
+                            className="flex items-center space-x-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                        >
+                            <TrendingUp className="h-4 w-4" />
+                            <span>Analytics</span>
+                        </Link>
                     </div>
                 </div>
 
-                {/* Stats Cards - Using backend data */}
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    {/* Today's Sales Card */}
-                    <div className="relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-6 dark:border-sidebar-border">
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-medium text-gray-600">
-                                    Today's Sales
-                                </h3>
-                                <DollarSign className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {formatCurrency(stats.todaySales)}
-                                </p>
-                                <p className="mt-1 text-xs text-green-600">
-                                    +15% from yesterday
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                            <div className="flex items-center space-x-1">
-                                <Banknote className="h-3 w-3" />
-                                <span>
-                                    Cash: {formatCurrency(stats.cashInDrawer)}
-                                </span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                                <Smartphone className="h-3 w-3" />
-                                <span>
-                                    M-Pesa: {formatCurrency(stats.mpesaSales)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Orders Today Card */}
-                    <div className="relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-6 dark:border-sidebar-border">
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-medium text-gray-600">
-                                    Orders Today
-                                </h3>
-                                <ShoppingCart className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {stats.ordersToday}
-                                </p>
-                                <p className="mt-1 text-xs text-blue-600">
-                                    {stats.pendingOrders} pending
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-1 text-xs text-gray-500">
-                            <Clock className="h-3 w-3" />
-                            <span>Average time: 12 mins</span>
-                        </div>
-                    </div>
-
-                    {/* Inventory Alerts Card */}
-                    <div className="relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border border-sidebar-border/70 bg-white p-6 dark:border-sidebar-border">
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-medium text-gray-600">
-                                    Inventory Alerts
-                                </h3>
+                {/* Critical Alerts Bar */}
+                {(criticalAlerts.longWaitOrders > 0 ||
+                    criticalAlerts.outOfStockCount > 0) && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
                                 <AlertTriangle className="h-5 w-5 text-red-600" />
+                                <div className="flex space-x-6 text-sm">
+                                    {criticalAlerts.longWaitOrders > 0 && (
+                                        <span className="font-medium text-red-800">
+                                            {criticalAlerts.longWaitOrders}{' '}
+                                            orders waiting 30+ minutes
+                                        </span>
+                                    )}
+                                    {criticalAlerts.outOfStockCount > 0 && (
+                                        <span className="font-medium text-red-800">
+                                            {criticalAlerts.outOfStockCount}{' '}
+                                            items out of stock
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="mt-2">
-                                <p className="text-2xl font-bold text-red-600">
-                                    {stats.lowStockCount}
+                            <Link
+                                href="/inventory/reports/low-stock"
+                                className="text-sm font-medium text-red-600 hover:text-red-800"
+                            >
+                                View Details →
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                {/* Today's Operations Summary */}
+                <div className="grid gap-4 md:grid-cols-4">
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">
+                                    Today's Sales
                                 </p>
-                                <p className="mt-1 text-xs text-red-600">
-                                    Items need attention
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {formatCurrency(todayStats.sales)}
                                 </p>
                             </div>
+                            <DollarSign className="h-6 w-6 text-green-600" />
                         </div>
-                        <div className="text-xs text-gray-500">
-                            <span>Chicken, Potatoes running low</span>
+                        <div className="mt-2 flex space-x-4 text-xs text-gray-500">
+                            <span>
+                                💵 {formatCurrency(todayStats.cashTotal)}
+                            </span>
+                            <span>
+                                📱 {formatCurrency(todayStats.mpesaTotal)}
+                            </span>
                         </div>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">
+                                    Orders Today
+                                </p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {todayStats.orders}
+                                </p>
+                            </div>
+                            <ShoppingCart className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <p className="mt-2 text-xs text-gray-500">
+                            {criticalAlerts.pendingOrders} pending
+                        </p>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">
+                                    Avg Order Time
+                                </p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {quickStats.averageOrderTime}m
+                                </p>
+                            </div>
+                            <Clock className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <p className="mt-2 text-xs text-gray-500">
+                            Target: 15 minutes
+                        </p>
+                    </div>
+
+                    <div
+                        className={`rounded-lg border p-4 ${
+                            criticalAlerts.lowStockCount > 0
+                                ? 'border-orange-200 bg-orange-50'
+                                : 'border-gray-200 bg-white'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600">
+                                    Stock Alerts
+                                </p>
+                                <p
+                                    className={`text-2xl font-bold ${
+                                        criticalAlerts.lowStockCount > 0
+                                            ? 'text-orange-600'
+                                            : 'text-gray-900'
+                                    }`}
+                                >
+                                    {criticalAlerts.lowStockCount}
+                                </p>
+                            </div>
+                            <Package
+                                className={`h-6 w-6 ${
+                                    criticalAlerts.lowStockCount > 0
+                                        ? 'text-orange-600'
+                                        : 'text-gray-600'
+                                }`}
+                            />
+                        </div>
+                        <p className="mt-2 text-xs text-gray-500">
+                            {criticalAlerts.lowStockCount > 0
+                                ? 'Need attention'
+                                : 'All good'}
+                        </p>
                     </div>
                 </div>
 
-                {/* Recent Orders and Top Items */}
-                <div className="grid gap-6 md:grid-cols-2">
-                    {/* Recent Orders */}
-                    <div className="rounded-xl border border-sidebar-border/70 bg-white p-6 dark:border-sidebar-border">
-                        <div className="mb-4 flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                                <ShoppingCart className="h-5 w-5 text-gray-700" />
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                    Recent Orders
-                                </h3>
-                            </div>
-                            <span className="text-sm text-gray-500">
-                                Latest activity
-                            </span>
-                        </div>
-                        <div className="space-y-4">
-                            {recentOrders.length > 0 ? (
-                                recentOrders.map((order) => (
-                                    <div
-                                        key={order.id}
-                                        className="flex items-center justify-between rounded-lg border p-3"
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Active Orders - Priority Section */}
+                    <div className="lg:col-span-2">
+                        <div className="rounded-lg border border-gray-200 bg-white">
+                            <div className="border-b p-4">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="flex items-center text-lg font-semibold">
+                                        <ChefHat className="mr-2 h-5 w-5" />
+                                        Active Orders ({activeOrders.length})
+                                    </h2>
+                                    <Link
+                                        href="/pos"
+                                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
                                     >
-                                        <div className="space-y-1">
-                                            <div className="flex items-center space-x-2">
-                                                <span className="font-medium">
-                                                    #{order.order_number}
-                                                </span>
-                                                <span
-                                                    className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                                        order.order_status ===
-                                                        'preparing'
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : order.order_status ===
-                                                                'ready'
-                                                              ? 'bg-green-100 text-green-800'
-                                                              : 'bg-gray-100 text-gray-800'
-                                                    }`}
-                                                >
-                                                    {order.order_status}
-                                                </span>
+                                        View All →
+                                    </Link>
+                                </div>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto p-4">
+                                {activeOrders.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {activeOrders.map((order) => (
+                                            <div
+                                                key={order.id}
+                                                className={`rounded-lg border p-3 ${getOrderPriority(order.time_elapsed)}`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div>
+                                                            <div className="flex items-center space-x-2">
+                                                                <span className="font-medium">
+                                                                    #
+                                                                    {
+                                                                        order.order_number
+                                                                    }
+                                                                </span>
+                                                                <span
+                                                                    className={`rounded-full px-2 py-1 text-xs font-medium ${getOrderStatusColor(order.order_status)}`}
+                                                                >
+                                                                    {
+                                                                        order.order_status
+                                                                    }
+                                                                </span>
+                                                                {order.time_elapsed >
+                                                                    20 && (
+                                                                    <span className="text-xs font-medium text-red-600">
+                                                                        🔥{' '}
+                                                                        {
+                                                                            order.time_elapsed
+                                                                        }
+                                                                        m
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-gray-600">
+                                                                {order.customer_name ||
+                                                                    'Walk-in'}{' '}
+                                                                •{' '}
+                                                                {
+                                                                    order.items_count
+                                                                }{' '}
+                                                                items
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="text-right">
+                                                            <p className="font-medium">
+                                                                {formatCurrency(
+                                                                    order.total_amount,
+                                                                )}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {
+                                                                    order.time_elapsed
+                                                                }
+                                                                m ago
+                                                            </p>
+                                                        </div>
+                                                        <Link
+                                                            href={`/pos/${order.id}`}
+                                                            className="text-blue-600 hover:text-blue-800"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Link>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <p className="text-sm text-gray-600">
-                                                {order.items_summary}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {order.customer_name ||
-                                                    'Walk-in'}{' '}
-                                                •{' '}
-                                                {new Date(
-                                                    order.created_at,
-                                                ).toLocaleTimeString()}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-medium">
-                                                {formatCurrency(
-                                                    order.total_amount,
-                                                )}
-                                            </p>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))
-                            ) : (
-                                <p className="py-8 text-center text-gray-500">
-                                    No recent orders
-                                </p>
-                            )}
+                                ) : (
+                                    <div className="py-8 text-center text-gray-500">
+                                        <ChefHat className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+                                        <p>No active orders</p>
+                                        <p className="text-sm">
+                                            All caught up! 🎉
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Top Selling Items */}
-                    <div className="rounded-xl border border-sidebar-border/70 bg-white p-6 dark:border-sidebar-border">
-                        <div className="mb-4 flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                                <TrendingUp className="h-5 w-5 text-gray-700" />
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                    Top Selling Items
-                                </h3>
-                            </div>
-                            <span className="text-sm text-gray-500">
-                                Today's favorites
-                            </span>
-                        </div>
-                        <div className="space-y-4">
-                            {topSellingItems.map((item) => (
-                                <div
-                                    key={item.rank}
-                                    className="flex items-center justify-between"
+                    {/* Quick Actions & Status */}
+                    <div className="space-y-6">
+                        {/* Quick Actions */}
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <h3 className="mb-4 font-semibold">
+                                Quick Actions
+                            </h3>
+                            <div className="space-y-3">
+                                <Link
+                                    href="/pos/create"
+                                    className="flex items-center space-x-3 rounded-lg border border-blue-200 bg-blue-50 p-3 hover:bg-blue-100"
                                 >
-                                    <div className="flex items-center space-x-3">
-                                        <div
-                                            className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white ${
-                                                item.rank === 1
-                                                    ? 'bg-yellow-500'
-                                                    : item.rank === 2
-                                                      ? 'bg-gray-400'
-                                                      : item.rank === 3
-                                                        ? 'bg-amber-600'
-                                                        : 'bg-gray-300'
-                                            }`}
-                                        >
-                                            {item.rank}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium">
-                                                {item.name}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                {item.orders_count} orders
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p className="font-medium">
-                                        {formatCurrency(item.revenue)}
-                                    </p>
+                                    <Plus className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-medium text-blue-900">
+                                        New Order
+                                    </span>
+                                </Link>
+                                <Link
+                                    href="/inventory"
+                                    className="flex items-center space-x-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                                >
+                                    <Package className="h-4 w-4 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-900">
+                                        Check Inventory
+                                    </span>
+                                </Link>
+                                <Link
+                                    href="/inventory/reports/low-stock"
+                                    className="flex items-center space-x-3 rounded-lg border border-orange-200 bg-orange-50 p-3 hover:bg-orange-100"
+                                >
+                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                    <span className="text-sm font-medium text-orange-900">
+                                        Stock Alerts
+                                    </span>
+                                </Link>
+                            </div>
+                        </div>
+
+                        {/* System Status */}
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <h3 className="mb-4 font-semibold">
+                                System Status
+                            </h3>
+                            <div className="space-y-3 text-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">
+                                        Inventory Value
+                                    </span>
+                                    <span className="font-medium">
+                                        {formatCurrency(
+                                            quickStats.inventoryValue,
+                                        )}
+                                    </span>
                                 </div>
-                            ))}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">
+                                        Staff on Duty
+                                    </span>
+                                    <span className="font-medium">
+                                        {quickStats.staffOnDuty}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">
+                                        Peak Hour Sales
+                                    </span>
+                                    <span className="font-medium">
+                                        {formatCurrency(
+                                            quickStats.peakHourSales,
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">
+                                        System Status
+                                    </span>
+                                    <span className="font-medium text-green-600">
+                                        ● Online
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Time & Date */}
+                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                            <div className="text-center">
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {new Date().toLocaleTimeString('en-KE', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    {new Date().toLocaleDateString('en-KE', {
+                                        weekday: 'long',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
+                                </p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {getCurrentShift()}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\POSController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\SalesController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -22,6 +23,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Dashboard - All authenticated users can access
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Sales - All authenticated users can access
+    Route::get('sales-analytics', [SalesController::class, 'index'])->name('sales-analytics');
     
     // POS System - Only Admin, Manager, and Cashier can access
     Route::middleware('role:admin,manager,cashier')->group(function () {

@@ -17,9 +17,10 @@ import {
     BookOpen,
     Folder,
     LayoutGrid,
-    Package, // Added this import
+    Package,
     Shield,
     ShoppingCart,
+    TrendingUp, // Added this import for sales analytics
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -35,7 +36,12 @@ const mainNavItems: NavItem[] = [
         icon: ShoppingCart,
     },
     {
-        title: 'Inventory Management', // Added this new menu item
+        title: 'Sales Analytics', // Added sales analytics menu item
+        href: '/sales-analytics',
+        icon: TrendingUp,
+    },
+    {
+        title: 'Inventory Management',
         href: '/inventory',
         icon: Package,
     },
