@@ -225,39 +225,10 @@ class InventoryController extends Controller
         }
     }
 
-    public function adjustStock(Request $request, InventoryItem $inventoryItem)
-    {
-        $validatedData = $request->validate([
-            'new_quantity' => 'required|numeric|min:0',
-            'reason' => 'required|string|max:100',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
-        try {
-            $stockMovement = $inventoryItem->adjustStock(
-                $validatedData['new_quantity'],
-                [
-                    'reason' => $validatedData['reason'],
-                    'notes' => $validatedData['notes'],
-                    'created_by' => $request->user()->id,
-                ]
-            );
-
-            return redirect()->back()
-                           ->with('success', "Stock adjusted successfully for '{$inventoryItem->name}'!");
-
-        } catch (\Exception $e) {
-            \Log::error('Stock adjustment failed', [
-                'inventory_item_id' => $inventoryItem->id,
-                'error' => $e->getMessage(),
-                'data' => $validatedData
-            ]);
-
-            return redirect()->back()
-                           ->withErrors(['error' => 'Failed to adjust stock: ' . $e->getMessage()]);
-        }
-    }
-
+    /**
+     * Add stock to inventory (Stock In)
+     * For purchases, deliveries, or receiving new inventory
+     */
     public function addStock(Request $request, InventoryItem $inventoryItem)
     {
         $validatedData = $request->validate([
@@ -283,8 +254,10 @@ class InventoryController extends Controller
                 ]
             );
 
+            $newStock = $inventoryItem->fresh()->current_stock;
+
             return redirect()->back()
-                           ->with('success', "Stock added successfully for '{$inventoryItem->name}'!");
+                           ->with('success', "Added {$validatedData['quantity']} {$inventoryItem->unit_of_measure} to '{$inventoryItem->name}'. New stock: {$newStock} {$inventoryItem->unit_of_measure}");
 
         } catch (\Exception $e) {
             \Log::error('Add stock failed', [
@@ -295,6 +268,51 @@ class InventoryController extends Controller
 
             return redirect()->back()
                            ->withErrors(['error' => 'Failed to add stock: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Use/Remove stock from inventory (Stock Out)
+     * For daily consumption, cooking, waste, or general usage
+     */
+    public function useStock(Request $request, InventoryItem $inventoryItem)
+    {
+        $validatedData = $request->validate([
+            'quantity' => 'required|numeric|min:0.01',
+            'reason' => 'required|string|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        // Check if there's enough stock
+        if ($validatedData['quantity'] > $inventoryItem->current_stock) {
+            return redirect()->back()
+                           ->withErrors(['quantity' => "Insufficient stock. Available: {$inventoryItem->current_stock} {$inventoryItem->unit_of_measure}"]);
+        }
+
+        try {
+            $stockMovement = $inventoryItem->removeStock(
+                $validatedData['quantity'],
+                [
+                    'reason' => $validatedData['reason'],
+                    'notes' => $validatedData['notes'] ?? null,
+                    'created_by' => $request->user()->id,
+                ]
+            );
+
+            $remainingStock = $inventoryItem->fresh()->current_stock;
+
+            return redirect()->back()
+                           ->with('success', "Used {$validatedData['quantity']} {$inventoryItem->unit_of_measure} of '{$inventoryItem->name}'. Remaining: {$remainingStock} {$inventoryItem->unit_of_measure}");
+
+        } catch (\Exception $e) {
+            \Log::error('Use stock failed', [
+                'inventory_item_id' => $inventoryItem->id,
+                'error' => $e->getMessage(),
+                'data' => $validatedData
+            ]);
+
+            return redirect()->back()
+                           ->withErrors(['error' => 'Failed to use stock: ' . $e->getMessage()]);
         }
     }
 

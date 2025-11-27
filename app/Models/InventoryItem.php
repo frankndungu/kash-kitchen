@@ -124,16 +124,21 @@ class InventoryItem extends Model
         return $this->current_stock * $this->unit_cost;
     }
 
+    /**
+     * Add stock to inventory (Stock In)
+     */
     public function addStock(float $quantity, array $options = []): StockMovement
     {
+        $previousStock = $this->current_stock;
         $this->increment('current_stock', $quantity);
+        $this->refresh();
         
         return $this->stockMovements()->create([
             'movement_type' => 'in',
             'quantity' => $quantity,
             'unit_cost' => $options['unit_cost'] ?? $this->unit_cost,
             'total_cost' => $quantity * ($options['unit_cost'] ?? $this->unit_cost),
-            'previous_stock' => $this->current_stock - $quantity,
+            'previous_stock' => $previousStock,
             'new_stock' => $this->current_stock,
             'supplier_id' => $options['supplier_id'] ?? $this->supplier_id,
             'reason' => $options['reason'] ?? 'purchase',
@@ -147,18 +152,24 @@ class InventoryItem extends Model
         ]);
     }
 
+    /**
+     * Remove stock from inventory (Stock Out)
+     * Used for sales, consumption, or general usage
+     */
     public function removeStock(float $quantity, array $options = []): StockMovement
     {
+        $previousStock = $this->current_stock;
         $this->decrement('current_stock', $quantity);
+        $this->refresh();
         
         return $this->stockMovements()->create([
             'movement_type' => 'out',
             'quantity' => $quantity,
             'unit_cost' => $this->unit_cost,
             'total_cost' => $quantity * $this->unit_cost,
-            'previous_stock' => $this->current_stock + $quantity,
+            'previous_stock' => $previousStock,
             'new_stock' => $this->current_stock,
-            'reason' => $options['reason'] ?? 'sale',
+            'reason' => $options['reason'] ?? 'usage',
             'notes' => $options['notes'] ?? null,
             'reference_type' => $options['reference_type'] ?? null,
             'reference_id' => $options['reference_id'] ?? null,
@@ -167,15 +178,32 @@ class InventoryItem extends Model
         ]);
     }
 
+    /**
+     * Adjust stock to a specific quantity
+     * Properly records as 'in' or 'out' based on whether stock increased or decreased
+     */
     public function adjustStock(float $newQuantity, array $options = []): StockMovement
     {
-        $difference = $newQuantity - $this->current_stock;
         $previousStock = $this->current_stock;
+        $difference = $newQuantity - $previousStock;
+        
+        // Determine movement type based on whether stock increased or decreased
+        if ($difference > 0) {
+            // Stock increased (adjustment up)
+            $movementType = 'in';
+        } elseif ($difference < 0) {
+            // Stock decreased (adjustment down)
+            $movementType = 'out';
+        } else {
+            // No change - still record it as adjustment for audit trail
+            $movementType = 'adjustment';
+        }
         
         $this->update(['current_stock' => $newQuantity]);
+        $this->refresh();
         
         return $this->stockMovements()->create([
-            'movement_type' => 'adjustment',
+            'movement_type' => $movementType,
             'quantity' => abs($difference),
             'unit_cost' => $this->unit_cost,
             'total_cost' => abs($difference) * $this->unit_cost,

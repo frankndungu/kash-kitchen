@@ -4,6 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
+    Banknote,
     ChefHat,
     Clock,
     DollarSign,
@@ -11,6 +12,7 @@ import {
     Package,
     Plus,
     ShoppingCart,
+    Smartphone,
     TrendingUp,
     X,
 } from 'lucide-react';
@@ -75,6 +77,51 @@ export default function Dashboard({
         }).format(amount);
     };
 
+    const formatTimeElapsed = (minutes: number) => {
+        if (minutes < 60) {
+            return `${Math.round(minutes)}m`;
+        } else if (minutes < 1440) {
+            // Less than 24 hours
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = Math.round(minutes % 60);
+            if (remainingMinutes === 0) {
+                return `${hours}h`;
+            }
+            return `${hours}h ${remainingMinutes}m`;
+        } else {
+            // 24+ hours (days)
+            const days = Math.floor(minutes / 1440);
+            const hours = Math.floor((minutes % 1440) / 60);
+            if (hours === 0) {
+                return `${days}d`;
+            }
+            return `${days}d ${hours}h`;
+        }
+    };
+
+    const formatTimeAgo = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInMinutes = Math.floor(
+            (now.getTime() - date.getTime()) / (1000 * 60),
+        );
+
+        if (diffInMinutes < 1) {
+            return 'Just now';
+        } else if (diffInMinutes < 60) {
+            return `${diffInMinutes}m ago`;
+        } else if (diffInMinutes < 1440) {
+            // Less than 24 hours
+            const hours = Math.floor(diffInMinutes / 60);
+            return `${hours}h ago`;
+        } else {
+            return date.toLocaleDateString('en-KE', {
+                month: 'short',
+                day: 'numeric',
+            });
+        }
+    };
+
     const getOrderStatusColor = (status: string) => {
         switch (status) {
             case 'confirmed':
@@ -101,6 +148,13 @@ export default function Dashboard({
         if (hour >= 6 && hour < 14) return 'Morning Shift';
         if (hour >= 14 && hour < 22) return 'Evening Shift';
         return 'Night Shift';
+    };
+
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 18) return 'Good Afternoon';
+        return 'Good Evening';
     };
 
     return (
@@ -146,13 +200,7 @@ export default function Dashboard({
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">
-                            Good{' '}
-                            {new Date().getHours() < 12
-                                ? 'Morning'
-                                : new Date().getHours() < 18
-                                  ? 'Afternoon'
-                                  : 'Evening'}
-                            , {user.name}
+                            {getGreeting()}, {user.name}
                         </h1>
                         <p className="text-gray-600">
                             {user.role} • {getCurrentShift()} • Kash Kitchen
@@ -188,7 +236,7 @@ export default function Dashboard({
                                     {criticalAlerts.longWaitOrders > 0 && (
                                         <span className="font-medium text-red-800">
                                             {criticalAlerts.longWaitOrders}{' '}
-                                            orders waiting 30+ minutes
+                                            orders waiting 10+ minutes
                                         </span>
                                     )}
                                     {criticalAlerts.outOfStockCount > 0 && (
@@ -224,12 +272,18 @@ export default function Dashboard({
                             <DollarSign className="h-6 w-6 text-green-600" />
                         </div>
                         <div className="mt-2 flex space-x-4 text-xs text-gray-500">
-                            <span>
-                                💵 {formatCurrency(todayStats.cashTotal)}
-                            </span>
-                            <span>
-                                📱 {formatCurrency(todayStats.mpesaTotal)}
-                            </span>
+                            <div className="flex items-center space-x-1">
+                                <Banknote className="h-3 w-3" />
+                                <span>
+                                    {formatCurrency(todayStats.cashTotal)}
+                                </span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <Smartphone className="h-3 w-3" />
+                                <span>
+                                    {formatCurrency(todayStats.mpesaTotal)}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -351,11 +405,10 @@ export default function Dashboard({
                                                                 {order.time_elapsed >
                                                                     20 && (
                                                                     <span className="text-xs font-medium text-red-600">
-                                                                        🔥{' '}
-                                                                        {
-                                                                            order.time_elapsed
-                                                                        }
-                                                                        m
+                                                                        URGENT{' '}
+                                                                        {formatTimeElapsed(
+                                                                            order.time_elapsed,
+                                                                        )}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -378,10 +431,9 @@ export default function Dashboard({
                                                                 )}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
-                                                                {
-                                                                    order.time_elapsed
-                                                                }
-                                                                m ago
+                                                                {formatTimeAgo(
+                                                                    order.created_at,
+                                                                )}
                                                             </p>
                                                         </div>
                                                         <Link
@@ -400,7 +452,7 @@ export default function Dashboard({
                                         <ChefHat className="mx-auto mb-2 h-8 w-8 text-gray-400" />
                                         <p>No active orders</p>
                                         <p className="text-sm">
-                                            All caught up! 🎉
+                                            All caught up!
                                         </p>
                                     </div>
                                 )}
@@ -485,7 +537,7 @@ export default function Dashboard({
                                         System Status
                                     </span>
                                     <span className="font-medium text-green-600">
-                                        ● Online
+                                        Online
                                     </span>
                                 </div>
                             </div>

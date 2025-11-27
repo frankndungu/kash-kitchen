@@ -5,6 +5,7 @@ use App\Http\Controllers\POSController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\MenuManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -36,7 +37,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('pos/{order}/edit', [POSController::class, 'edit'])->name('pos.edit');
         Route::put('pos/{order}', [POSController::class, 'update'])->name('pos.update');
         Route::delete('pos/{order}', [POSController::class, 'destroy'])->name('pos.destroy');
-        
         Route::get('pos/menu-items/{categoryId}', [POSController::class, 'getMenuItems'])->name('pos.menu-items');
         Route::post('pos/{order}/payment', [POSController::class, 'processPayment'])->name('pos.payment');
     });
@@ -59,9 +59,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('inventory/{inventoryItem}', [InventoryController::class, 'update'])->name('inventory.update');
         
         // Stock Management Actions
-        Route::post('inventory/{inventoryItem}/adjust-stock', [InventoryController::class, 'adjustStock'])->name('inventory.adjust-stock');
         Route::post('inventory/{inventoryItem}/add-stock', [InventoryController::class, 'addStock'])->name('inventory.add-stock');
-        
+        Route::post('inventory/{inventoryItem}/use-stock', [InventoryController::class, 'useStock'])->name('inventory.use-stock');
+
         // Reports
         Route::get('inventory/reports/low-stock', [InventoryController::class, 'lowStockReport'])->name('inventory.low-stock-report');
     });
@@ -69,9 +69,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Future routes ready for expansion:
     
     // Menu Management - Admin and Manager only
-    // Route::middleware('role:admin,manager')->group(function () {
-    //     Route::resource('menu', MenuManagementController::class);
-    // });
+    Route::middleware('role:admin,manager')->group(function () {
+        // Menu index page
+        Route::get('/menu', [MenuManagementController::class, 'index'])->name('menu.index');
+        
+        // Create new menu item
+        Route::get('/menu/create', [MenuManagementController::class, 'create'])->name('menu.create');
+        Route::post('/menu', [MenuManagementController::class, 'store'])->name('menu.store');
+        
+        // Show, edit, update, delete specific menu item
+        Route::get('/menu/{id}', [MenuManagementController::class, 'show'])->name('menu.show');
+        Route::get('/menu/{id}/edit', [MenuManagementController::class, 'edit'])->name('menu.edit');
+        Route::patch('/menu/{id}', [MenuManagementController::class, 'update'])->name('menu.update');
+        Route::delete('/menu/{id}', [MenuManagementController::class, 'destroy'])->name('menu.destroy');
+        
+        // Toggle availability
+        Route::patch('/menu/{id}/toggle', [MenuManagementController::class, 'toggleAvailability'])
+             ->name('menu.toggle');
+    });
     
     // Reports - Admin and Manager only  
     // Route::middleware('role:admin,manager')->group(function () {

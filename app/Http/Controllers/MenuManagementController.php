@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Category;
 use App\Models\MenuItem;
+use Illuminate\Support\Str;
 
 class MenuManagementController extends Controller
 {
@@ -24,7 +25,7 @@ class MenuManagementController extends Controller
                              ->ordered()
                              ->get();
 
-        return Inertia::render('Management/MenuManagement', [
+        return Inertia::render('menu/index', [
             'user' => $user->load('roles'),
             'categories' => $categories,
             'stats' => [
@@ -40,7 +41,7 @@ class MenuManagementController extends Controller
     {
         $categories = Category::active()->ordered()->get();
         
-        return Inertia::render('Management/CreateMenuItem', [
+        return Inertia::render('menu/create', [
             'categories' => $categories,
         ]);
     }
@@ -56,7 +57,14 @@ class MenuManagementController extends Controller
             'is_available' => 'boolean',
             'is_combo' => 'boolean',
             'preparation_time_minutes' => 'required|integer|min:1',
+            'allergens' => 'nullable|array',
+            'special_instructions' => 'nullable|string',
         ]);
+
+        // Auto-generate SKU if not provided
+        if (empty($validatedData['sku'])) {
+            $validatedData['sku'] = strtoupper(str_replace(' ', '_', $validatedData['name']));
+        }
 
         MenuItem::create($validatedData);
 
@@ -64,18 +72,56 @@ class MenuManagementController extends Controller
                        ->with('success', 'Menu item created successfully!');
     }
 
-    public function edit(MenuItem $menuItem)
+    public function show(Request $request, $id)
     {
+        // Check permissions
+        $user = $request->user();
+        if (!$user->hasAnyRole(['admin', 'manager'])) {
+            return redirect()->route('dashboard')
+                           ->with('error', 'You do not have access to menu management.');
+        }
+
+        // Find the menu item with category relationship
+        $menuItem = MenuItem::with('category')->findOrFail($id);
+        
+        // Debug: Log what we're sending to the view
+        \Log::info('Menu item data being sent to view:', [
+            'id' => $menuItem->id,
+            'name' => $menuItem->name,
+            'price' => $menuItem->price,
+            'category_id' => $menuItem->category_id,
+            'category_name' => $menuItem->category ? $menuItem->category->name : 'No category',
+            'is_available' => $menuItem->is_available,
+            'full_data' => $menuItem->toArray()
+        ]);
+
+        return Inertia::render('menu/show', [
+            'menuItem' => $menuItem->load('category'),
+        ]);
+    }
+
+    public function edit(Request $request, $id)
+    {
+        // Check permissions
+        $user = $request->user();
+        if (!$user->hasAnyRole(['admin', 'manager'])) {
+            return redirect()->route('dashboard')
+                           ->with('error', 'You do not have access to menu management.');
+        }
+
+        $menuItem = MenuItem::findOrFail($id);
         $categories = Category::active()->ordered()->get();
         
-        return Inertia::render('Management/EditMenuItem', [
+        return Inertia::render('menu/edit', [
             'menuItem' => $menuItem,
             'categories' => $categories,
         ]);
     }
 
-    public function update(Request $request, MenuItem $menuItem)
+    public function update(Request $request, $id)
     {
+        $menuItem = MenuItem::findOrFail($id);
+        
         $validatedData = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name' => 'required|string|max:255',
@@ -85,11 +131,34 @@ class MenuManagementController extends Controller
             'is_available' => 'boolean',
             'is_combo' => 'boolean',
             'preparation_time_minutes' => 'required|integer|min:1',
+            'allergens' => 'nullable|array',
+            'special_instructions' => 'nullable|string',
         ]);
 
         $menuItem->update($validatedData);
 
         return redirect()->route('menu.index')
                        ->with('success', 'Menu item updated successfully!');
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $menuItem = MenuItem::findOrFail($id);
+        $menuItem->delete();
+
+        return redirect()->route('menu.index')
+                       ->with('success', 'Menu item deleted successfully!');
+    }
+
+    // Additional helper method to toggle availability
+    public function toggleAvailability(Request $request, $id)
+    {
+        $menuItem = MenuItem::findOrFail($id);
+        $menuItem->update(['is_available' => !$menuItem->is_available]);
+
+        $status = $menuItem->is_available ? 'available' : 'unavailable';
+        
+        return redirect()->route('menu.index')
+                       ->with('success', "Menu item marked as {$status}!");
     }
 }

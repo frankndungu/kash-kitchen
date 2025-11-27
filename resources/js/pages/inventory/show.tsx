@@ -7,7 +7,9 @@ import {
     Building,
     Calendar,
     Edit,
+    Minus,
     Package,
+    Phone,
     Plus,
     TrendingDown,
     TrendingUp,
@@ -92,13 +94,16 @@ export default function Show({
     movementStats,
 }: ShowProps) {
     const [showAddStockModal, setShowAddStockModal] = useState(false);
-    const [showAdjustModal, setShowAdjustModal] = useState(false);
+    const [showUseStockModal, setShowUseStockModal] = useState(false);
 
+    // Add Stock Form
     const {
         data: addStockData,
         setData: setAddStockData,
         post: postAddStock,
         processing: addingStock,
+        errors: addStockErrors,
+        reset: resetAddStock,
     } = useForm({
         quantity: '',
         unit_cost: inventoryItem.unit_cost.toString(),
@@ -106,14 +111,17 @@ export default function Show({
         notes: '',
     });
 
+    // Use Stock Form
     const {
-        data: adjustData,
-        setData: setAdjustData,
-        post: postAdjust,
-        processing: adjusting,
+        data: useStockData,
+        setData: setUseStockData,
+        post: postUseStock,
+        processing: usingStock,
+        errors: useStockErrors,
+        reset: resetUseStock,
     } = useForm({
-        new_quantity: inventoryItem.current_stock.toString(),
-        reason: 'manual_adjustment',
+        quantity: '',
+        reason: 'daily_usage',
         notes: '',
     });
 
@@ -183,19 +191,57 @@ export default function Show({
         postAddStock(`/inventory/${inventoryItem.id}/add-stock`, {
             onSuccess: () => {
                 setShowAddStockModal(false);
-                setAddStockData('quantity', '');
-                setAddStockData('notes', '');
+                resetAddStock();
             },
         });
     };
 
-    const handleAdjustStock = (e: React.FormEvent) => {
+    const handleUseStock = (e: React.FormEvent) => {
         e.preventDefault();
-        postAdjust(`/inventory/${inventoryItem.id}/adjust-stock`, {
+        postUseStock(`/inventory/${inventoryItem.id}/use-stock`, {
             onSuccess: () => {
-                setShowAdjustModal(false);
+                setShowUseStockModal(false);
+                resetUseStock();
             },
         });
+    };
+
+    const getMovementTypeBadge = (type: string) => {
+        switch (type) {
+            case 'in':
+                return 'bg-green-100 text-green-800';
+            case 'out':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const getMovementTypeLabel = (type: string) => {
+        switch (type) {
+            case 'in':
+                return 'Stock In';
+            case 'out':
+                return 'Stock Out';
+            default:
+                return type;
+        }
+    };
+
+    const getReasonLabel = (reason: string) => {
+        const labels: Record<string, string> = {
+            purchase: 'Purchase',
+            initial_stock: 'Initial Stock',
+            daily_usage: 'Daily Usage',
+            cooking: 'Cooking/Preparation',
+            waste: 'Waste/Spoilage',
+            sale: 'Sale',
+            transfer: 'Transfer',
+            damaged: 'Damaged',
+            expired: 'Expired',
+            other: 'Other',
+        };
+        return labels[reason] || reason;
     };
 
     const stockStatus = getStockStatus();
@@ -223,7 +269,7 @@ export default function Show({
                             </p>
                         </div>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-wrap gap-2">
                         <button
                             onClick={() => setShowAddStockModal(true)}
                             className="flex items-center space-x-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
@@ -232,11 +278,11 @@ export default function Show({
                             <span>Add Stock</span>
                         </button>
                         <button
-                            onClick={() => setShowAdjustModal(true)}
-                            className="flex items-center space-x-2 rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700"
+                            onClick={() => setShowUseStockModal(true)}
+                            className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
                         >
-                            <BarChart3 className="h-4 w-4" />
-                            <span>Adjust Stock</span>
+                            <Minus className="h-4 w-4" />
+                            <span>Use Stock</span>
                         </button>
                         <Link
                             href={`/inventory/${inventoryItem.id}/edit`}
@@ -259,7 +305,9 @@ export default function Show({
                             <div className="grid gap-4 md:grid-cols-3">
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-gray-900">
-                                        {inventoryItem.current_stock}
+                                        {Number(
+                                            inventoryItem.current_stock,
+                                        ).toFixed(2)}
                                     </div>
                                     <div className="text-sm text-gray-600">
                                         Current Stock (
@@ -276,7 +324,9 @@ export default function Show({
                                 </div>
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-orange-600">
-                                        {inventoryItem.minimum_stock}
+                                        {Number(
+                                            inventoryItem.minimum_stock,
+                                        ).toFixed(2)}
                                     </div>
                                     <div className="text-sm text-gray-600">
                                         Minimum Stock (
@@ -341,7 +391,9 @@ export default function Show({
                                             Stock In
                                         </p>
                                         <p className="text-xl font-bold text-green-600">
-                                            {movementStats.total_stock_in}
+                                            {Number(
+                                                movementStats.total_stock_in,
+                                            ).toFixed(2)}
                                         </p>
                                     </div>
                                     <TrendingUp className="h-6 w-6 text-green-600" />
@@ -354,7 +406,9 @@ export default function Show({
                                             Stock Out
                                         </p>
                                         <p className="text-xl font-bold text-red-600">
-                                            {movementStats.total_stock_out}
+                                            {Number(
+                                                movementStats.total_stock_out,
+                                            ).toFixed(2)}
                                         </p>
                                     </div>
                                     <TrendingDown className="h-6 w-6 text-red-600" />
@@ -375,7 +429,7 @@ export default function Show({
                             </div>
                         </div>
 
-                        {/* Stock Movements */}
+                        {/* Stock Movements Table */}
                         <div className="rounded-lg border border-gray-200 bg-white">
                             <div className="border-b p-4">
                                 <h2 className="text-lg font-semibold">
@@ -404,67 +458,102 @@ export default function Show({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
-                                        {stockMovements.data.map((movement) => (
-                                            <tr
-                                                key={movement.id}
-                                                className="hover:bg-gray-50"
-                                            >
-                                                <td className="px-4 py-4 text-sm whitespace-nowrap text-gray-900">
-                                                    {formatDate(
-                                                        movement.movement_date,
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span
-                                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                                            movement.movement_type ===
-                                                            'in'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : movement.movement_type ===
-                                                                    'out'
-                                                                  ? 'bg-red-100 text-red-800'
-                                                                  : 'bg-blue-100 text-blue-800'
-                                                        }`}
+                                        {stockMovements.data.length > 0 ? (
+                                            stockMovements.data.map(
+                                                (movement) => (
+                                                    <tr
+                                                        key={movement.id}
+                                                        className="hover:bg-gray-50"
                                                     >
-                                                        {movement.movement_type ===
-                                                            'in' && (
-                                                            <TrendingUp className="mr-1 h-3 w-3" />
-                                                        )}
-                                                        {movement.movement_type ===
-                                                            'out' && (
-                                                            <TrendingDown className="mr-1 h-3 w-3" />
-                                                        )}
-                                                        {movement.movement_type ===
-                                                            'adjustment' && (
-                                                            <BarChart3 className="mr-1 h-3 w-3" />
-                                                        )}
-                                                        {movement.movement_type
-                                                            .charAt(0)
-                                                            .toUpperCase() +
-                                                            movement.movement_type.slice(
-                                                                1,
+                                                        <td className="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
+                                                            {formatDate(
+                                                                movement.movement_date,
                                                             )}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm whitespace-nowrap text-gray-900">
-                                                    {movement.movement_type ===
-                                                    'out'
-                                                        ? '-'
-                                                        : '+'}
-                                                    {movement.quantity}{' '}
-                                                    {
-                                                        inventoryItem.unit_of_measure
-                                                    }
-                                                </td>
-                                                <td className="px-4 py-4 text-sm whitespace-nowrap text-gray-600">
-                                                    {movement.reason ||
-                                                        'No reason provided'}
-                                                </td>
-                                                <td className="px-4 py-4 text-sm whitespace-nowrap text-gray-600">
-                                                    {movement.creator.name}
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap">
+                                                            <span
+                                                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getMovementTypeBadge(movement.movement_type)}`}
+                                                            >
+                                                                {movement.movement_type ===
+                                                                    'in' && (
+                                                                    <TrendingUp className="mr-1 h-3 w-3" />
+                                                                )}
+                                                                {movement.movement_type ===
+                                                                    'out' && (
+                                                                    <TrendingDown className="mr-1 h-3 w-3" />
+                                                                )}
+                                                                {getMovementTypeLabel(
+                                                                    movement.movement_type,
+                                                                )}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                                            <span
+                                                                className={
+                                                                    movement.movement_type ===
+                                                                    'in'
+                                                                        ? 'font-medium text-green-600'
+                                                                        : 'font-medium text-red-600'
+                                                                }
+                                                            >
+                                                                {movement.movement_type ===
+                                                                'in'
+                                                                    ? '+'
+                                                                    : '-'}
+                                                                {Number(
+                                                                    movement.quantity,
+                                                                ).toFixed(
+                                                                    2,
+                                                                )}{' '}
+                                                                {
+                                                                    inventoryItem.unit_of_measure
+                                                                }
+                                                            </span>
+                                                            <div className="text-xs text-gray-500">
+                                                                {Number(
+                                                                    movement.previous_stock,
+                                                                ).toFixed(
+                                                                    2,
+                                                                )}{' '}
+                                                                →{' '}
+                                                                {Number(
+                                                                    movement.new_stock,
+                                                                ).toFixed(2)}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-900">
+                                                            <div>
+                                                                {getReasonLabel(
+                                                                    movement.reason,
+                                                                )}
+                                                            </div>
+                                                            {movement.notes && (
+                                                                <div className="text-xs text-gray-500">
+                                                                    {
+                                                                        movement.notes
+                                                                    }
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm whitespace-nowrap text-gray-500">
+                                                            {movement.creator
+                                                                ?.name ||
+                                                                'System'}
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )
+                                        ) : (
+                                            <tr>
+                                                <td
+                                                    colSpan={5}
+                                                    className="px-4 py-8 text-center text-gray-500"
+                                                >
+                                                    No stock movements recorded
+                                                    yet
                                                 </td>
                                             </tr>
-                                        ))}
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -474,61 +563,46 @@ export default function Show({
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Item Details */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
-                            <h3 className="mb-4 font-semibold">Item Details</h3>
-                            <div className="space-y-3 text-sm">
-                                <div>
+                        <div className="rounded-lg border border-gray-200 bg-white p-6">
+                            <h2 className="mb-4 text-lg font-semibold">
+                                Item Details
+                            </h2>
+                            <div className="space-y-3">
+                                <div className="flex justify-between">
                                     <span className="text-gray-600">
-                                        Category:
+                                        Category
                                     </span>
                                     <span
-                                        className="ml-2 inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
+                                        className="rounded-full px-2 py-1 text-xs font-medium"
                                         style={{
-                                            backgroundColor:
-                                                inventoryItem.category.color +
-                                                '20',
+                                            backgroundColor: `${inventoryItem.category.color}20`,
                                             color: inventoryItem.category.color,
                                         }}
                                     >
                                         {inventoryItem.category.name}
                                     </span>
                                 </div>
-                                <div>
+                                <div className="flex justify-between">
                                     <span className="text-gray-600">
-                                        Unit Cost:
+                                        Unit Cost
                                     </span>
-                                    <span className="ml-2 font-medium">
+                                    <span className="font-medium">
                                         {formatCurrency(
                                             inventoryItem.unit_cost,
                                         )}
                                     </span>
                                 </div>
-                                {inventoryItem.selling_price && (
-                                    <div>
-                                        <span className="text-gray-600">
-                                            Selling Price:
-                                        </span>
-                                        <span className="ml-2 font-medium">
-                                            {formatCurrency(
-                                                inventoryItem.selling_price,
-                                            )}
-                                        </span>
-                                    </div>
-                                )}
-                                <div>
+                                <div className="flex justify-between">
                                     <span className="text-gray-600">
-                                        Unit of Measure:
+                                        Unit of Measure
                                     </span>
-                                    <span className="ml-2 font-medium">
+                                    <span className="font-medium">
                                         {inventoryItem.unit_of_measure}
                                     </span>
                                 </div>
                                 {inventoryItem.description && (
-                                    <div>
-                                        <span className="text-gray-600">
-                                            Description:
-                                        </span>
-                                        <p className="mt-1 text-gray-900">
+                                    <div className="border-t pt-3">
+                                        <p className="text-sm text-gray-600">
                                             {inventoryItem.description}
                                         </p>
                                     </div>
@@ -536,42 +610,41 @@ export default function Show({
                             </div>
                         </div>
 
-                        {/* Supplier Info */}
+                        {/* Supplier */}
                         {inventoryItem.supplier && (
-                            <div className="rounded-lg border border-gray-200 bg-white p-4">
-                                <h3 className="mb-4 flex items-center font-semibold">
-                                    <Building className="mr-2 h-4 w-4" />
+                            <div className="rounded-lg border border-gray-200 bg-white p-6">
+                                <h2 className="mb-4 flex items-center text-lg font-semibold">
+                                    <Building className="mr-2 h-5 w-5" />
                                     Supplier
-                                </h3>
-                                <div className="space-y-2 text-sm">
-                                    <div>
-                                        <span className="font-medium">
-                                            {inventoryItem.supplier.name}
-                                        </span>
-                                    </div>
+                                </h2>
+                                <div className="space-y-2">
+                                    <p className="font-medium text-gray-900">
+                                        {inventoryItem.supplier.name}
+                                    </p>
                                     {inventoryItem.supplier.contact_person && (
-                                        <div className="flex items-center text-gray-600">
+                                        <p className="flex items-center text-sm text-gray-600">
                                             <User className="mr-2 h-4 w-4" />
                                             {
                                                 inventoryItem.supplier
                                                     .contact_person
                                             }
-                                        </div>
+                                        </p>
                                     )}
                                     {inventoryItem.supplier.phone && (
-                                        <div className="text-gray-600">
-                                            📞 {inventoryItem.supplier.phone}
-                                        </div>
+                                        <p className="flex items-center text-sm text-gray-600">
+                                            <Phone className="mr-2 h-4 w-4" />
+                                            {inventoryItem.supplier.phone}
+                                        </p>
                                     )}
                                 </div>
                             </div>
                         )}
 
-                        {/* Audit Info */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
-                            <h3 className="mb-4 font-semibold">
+                        {/* Audit Information */}
+                        <div className="rounded-lg border border-gray-200 bg-white p-6">
+                            <h2 className="mb-4 text-lg font-semibold">
                                 Audit Information
-                            </h3>
+                            </h2>
                             <div className="space-y-2 text-sm text-gray-600">
                                 <div>
                                     Created:{' '}
@@ -600,13 +673,18 @@ export default function Show({
             {showAddStockModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
                     <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
-                        <h3 className="mb-4 text-lg font-semibold">
+                        <h3 className="mb-4 flex items-center text-lg font-semibold text-green-700">
+                            <Plus className="mr-2 h-5 w-5" />
                             Add Stock
                         </h3>
+                        <p className="mb-4 text-sm text-gray-600">
+                            Record new stock received from supplier or purchase.
+                        </p>
                         <form onSubmit={handleAddStock} className="space-y-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
-                                    Quantity to Add
+                                    Quantity to Add (
+                                    {inventoryItem.unit_of_measure})
                                 </label>
                                 <input
                                     type="number"
@@ -619,10 +697,25 @@ export default function Show({
                                             e.target.value,
                                         )
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-green-500"
                                     placeholder="0.00"
                                     required
                                 />
+                                {addStockErrors.quantity && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {addStockErrors.quantity}
+                                    </p>
+                                )}
+                                {addStockData.quantity && (
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        New total:{' '}
+                                        {(
+                                            inventoryItem.current_stock +
+                                            Number(addStockData.quantity)
+                                        ).toFixed(2)}{' '}
+                                        {inventoryItem.unit_of_measure}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
@@ -639,35 +732,38 @@ export default function Show({
                                             e.target.value,
                                         )
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-green-500"
                                     required
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
-                                    Notes
+                                    Notes (Optional)
                                 </label>
                                 <textarea
                                     value={addStockData.notes}
                                     onChange={(e) =>
                                         setAddStockData('notes', e.target.value)
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:ring-green-500"
                                     rows={2}
-                                    placeholder="Optional notes..."
+                                    placeholder="e.g., Invoice #123, Delivery from supplier"
                                 />
                             </div>
                             <div className="flex space-x-3">
                                 <button
                                     type="submit"
                                     disabled={addingStock}
-                                    className="flex-1 rounded-lg bg-green-600 py-2 text-white hover:bg-green-700"
+                                    className="flex-1 rounded-lg bg-green-600 py-2 text-white hover:bg-green-700 disabled:opacity-50"
                                 >
                                     {addingStock ? 'Adding...' : 'Add Stock'}
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setShowAddStockModal(false)}
+                                    onClick={() => {
+                                        setShowAddStockModal(false);
+                                        resetAddStock();
+                                    }}
                                     className="flex-1 rounded-lg border border-gray-300 py-2 text-gray-700 hover:bg-gray-50"
                                 >
                                     Cancel
@@ -678,92 +774,130 @@ export default function Show({
                 </div>
             )}
 
-            {/* Adjust Stock Modal */}
-            {showAdjustModal && (
+            {/* Use Stock Modal */}
+            {showUseStockModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
                     <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-2xl">
-                        <h3 className="mb-4 text-lg font-semibold">
-                            Adjust Stock
+                        <h3 className="mb-4 flex items-center text-lg font-semibold text-red-700">
+                            <Minus className="mr-2 h-5 w-5" />
+                            Use Stock
                         </h3>
-                        <form
-                            onSubmit={handleAdjustStock}
-                            className="space-y-4"
-                        >
+                        <p className="mb-4 text-sm text-gray-600">
+                            Record stock used for cooking, daily operations, or
+                            other consumption.
+                        </p>
+                        <div className="mb-4 rounded-lg bg-gray-50 p-3">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">
+                                    Available Stock:
+                                </span>
+                                <span className="font-semibold text-gray-900">
+                                    {Number(
+                                        inventoryItem.current_stock,
+                                    ).toFixed(2)}{' '}
+                                    {inventoryItem.unit_of_measure}
+                                </span>
+                            </div>
+                        </div>
+                        <form onSubmit={handleUseStock} className="space-y-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
-                                    New Quantity
+                                    Quantity to Use (
+                                    {inventoryItem.unit_of_measure})
                                 </label>
                                 <input
                                     type="number"
                                     step="0.01"
-                                    min="0"
-                                    value={adjustData.new_quantity}
+                                    min="0.01"
+                                    max={inventoryItem.current_stock}
+                                    value={useStockData.quantity}
                                     onChange={(e) =>
-                                        setAdjustData(
-                                            'new_quantity',
+                                        setUseStockData(
+                                            'quantity',
                                             e.target.value,
                                         )
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:ring-red-500"
+                                    placeholder="0.00"
                                     required
                                 />
-                                <p className="mt-1 text-xs text-gray-500">
-                                    Current: {inventoryItem.current_stock}{' '}
-                                    {inventoryItem.unit_of_measure}
-                                </p>
+                                {useStockErrors.quantity && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {useStockErrors.quantity}
+                                    </p>
+                                )}
+                                {useStockData.quantity && (
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        Remaining after use:{' '}
+                                        {(
+                                            inventoryItem.current_stock -
+                                            Number(useStockData.quantity)
+                                        ).toFixed(2)}{' '}
+                                        {inventoryItem.unit_of_measure}
+                                    </p>
+                                )}
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
                                     Reason
                                 </label>
                                 <select
-                                    value={adjustData.reason}
+                                    value={useStockData.reason}
                                     onChange={(e) =>
-                                        setAdjustData('reason', e.target.value)
+                                        setUseStockData(
+                                            'reason',
+                                            e.target.value,
+                                        )
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:ring-red-500"
                                 >
-                                    <option value="manual_adjustment">
-                                        Manual Adjustment
+                                    <option value="daily_usage">
+                                        Daily Usage
                                     </option>
-                                    <option value="count_correction">
-                                        Count Correction
+                                    <option value="cooking">
+                                        Cooking/Preparation
                                     </option>
-                                    <option value="damage">Damage/Loss</option>
-                                    <option value="expiry">
-                                        Expired Items
+                                    <option value="waste">
+                                        Waste/Spoilage
                                     </option>
-                                    <option value="theft">Theft</option>
+                                    <option value="damaged">Damaged</option>
+                                    <option value="expired">Expired</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="other">Other</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
-                                    Notes
+                                    Notes (Optional)
                                 </label>
                                 <textarea
-                                    value={adjustData.notes}
+                                    value={useStockData.notes}
                                     onChange={(e) =>
-                                        setAdjustData('notes', e.target.value)
+                                        setUseStockData('notes', e.target.value)
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:ring-red-500"
                                     rows={2}
-                                    placeholder="Reason for adjustment..."
-                                    required
+                                    placeholder="e.g., Used for lunch prep, Morning batch"
                                 />
                             </div>
                             <div className="flex space-x-3">
                                 <button
                                     type="submit"
-                                    disabled={adjusting}
-                                    className="flex-1 rounded-lg bg-orange-600 py-2 text-white hover:bg-orange-700"
+                                    disabled={
+                                        usingStock ||
+                                        Number(useStockData.quantity) >
+                                            inventoryItem.current_stock
+                                    }
+                                    className="flex-1 rounded-lg bg-red-600 py-2 text-white hover:bg-red-700 disabled:opacity-50"
                                 >
-                                    {adjusting
-                                        ? 'Adjusting...'
-                                        : 'Adjust Stock'}
+                                    {usingStock ? 'Recording...' : 'Use Stock'}
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setShowAdjustModal(false)}
+                                    onClick={() => {
+                                        setShowUseStockModal(false);
+                                        resetUseStock();
+                                    }}
                                     className="flex-1 rounded-lg border border-gray-300 py-2 text-gray-700 hover:bg-gray-50"
                                 >
                                     Cancel

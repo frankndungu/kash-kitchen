@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
 
 class MenuItem extends Model
 {
@@ -13,20 +14,16 @@ class MenuItem extends Model
     protected $fillable = [
         'category_id',
         'name',
-        'slug',
         'description',
+        'sku',
         'price',
         'cost_price',
-        'sku',
         'is_available',
         'is_combo',
-        'combo_items',
-        'requires_kitchen',
         'preparation_time_minutes',
-        'image_url',
-        'sort_order',
         'allergens',
-        'special_instructions'
+        'special_instructions',
+        'sort_order',
     ];
 
     protected $casts = [
@@ -34,38 +31,19 @@ class MenuItem extends Model
         'cost_price' => 'decimal:2',
         'is_available' => 'boolean',
         'is_combo' => 'boolean',
-        'requires_kitchen' => 'boolean',
-        'combo_items' => 'array',
-        'allergens' => 'array'
+        'allergens' => 'array',
+        'preparation_time_minutes' => 'integer',
     ];
 
-    // Automatically generate slug
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($menuItem) {
-            if (empty($menuItem->slug)) {
-                $menuItem->slug = Str::slug($menuItem->name);
-            }
-        });
-    }
-
     // Relationships
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function orderItems()
+    public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
-    }
-
-    public function ingredients()
-    {
-        return $this->belongsToMany(Ingredient::class)
-                    ->withPivot('quantity_required')
-                    ->withTimestamps();
     }
 
     // Scopes
@@ -74,42 +52,79 @@ class MenuItem extends Model
         return $query->where('is_available', true);
     }
 
-    public function scopeCombo($query)
-    {
-        return $query->where('is_combo', true);
-    }
-
-    public function scopeInCategory($query, $categoryId)
+    public function scopeByCategory($query, $categoryId)
     {
         return $query->where('category_id', $categoryId);
     }
 
-    // Helper methods
+    public function scopeOrderBySort($query)
+    {
+        return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    // Accessors
     public function getProfitAttribute()
     {
-        if (!$this->cost_price) return null;
+        if (!$this->cost_price) {
+            return null;
+        }
+        
         return $this->price - $this->cost_price;
     }
 
     public function getProfitMarginAttribute()
     {
-        if (!$this->cost_price || $this->price == 0) return null;
+        if (!$this->cost_price || $this->price <= 0) {
+            return null;
+        }
+        
         return (($this->price - $this->cost_price) / $this->price) * 100;
     }
 
-    public function isLowProfit($threshold = 20)
+    public function getFormattedPriceAttribute()
     {
-        return $this->profit_margin !== null && $this->profit_margin < $threshold;
+        return 'KES ' . number_format($this->price, 2);
     }
 
-    public function menuItemIngredients()
+    public function getFormattedCostPriceAttribute()
     {
-        return $this->hasMany(MenuItemIngredient::class);
+        return $this->cost_price ? 'KES ' . number_format($this->cost_price, 2) : null;
     }
 
-    public function inventoryItems()
+    public function getPreparationTimeFormattedAttribute()
     {
-        return $this->belongsToMany(InventoryItem::class, 'menu_item_ingredients')
-                    ->withPivot('quantity_needed', 'unit_of_measure', 'cost_per_serving', 'is_critical');
+        $minutes = $this->preparation_time_minutes;
+        if ($minutes >= 60) {
+            $hours = floor($minutes / 60);
+            $remainingMinutes = $minutes % 60;
+            return $hours . 'h' . ($remainingMinutes > 0 ? ' ' . $remainingMinutes . 'm' : '');
+        }
+        return $minutes . ' min';
+    }
+
+    // Business Logic Methods
+    public function canBeOrdered(): bool
+    {
+        return $this->is_available;
+    }
+
+    public function markAsUnavailable(): bool
+    {
+        return $this->update(['is_available' => false]);
+    }
+
+    public function markAsAvailable(): bool
+    {
+        return $this->update(['is_available' => true]);
+    }
+
+    public function hasAllergen(string $allergen): bool
+    {
+        return $this->allergens && in_array($allergen, $this->allergens);
+    }
+
+    public function getAllergensAsString(): string
+    {
+        return $this->allergens ? implode(', ', $this->allergens) : 'None';
     }
 }
