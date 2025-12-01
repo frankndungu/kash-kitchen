@@ -157,6 +157,17 @@ class POSController extends Controller
         ]);
 
         try {
+            // Set contextual customer name if none provided
+            $customerName = $validatedData['customer_name'];
+            if (empty($customerName)) {
+                $customerName = match($validatedData['order_type']) {
+                    'dine_in' => 'Dine in customer',
+                    'takeaway' => 'Takeaway customer', 
+                    'delivery' => 'Delivery customer',
+                    default => 'Walk-in customer'
+                };
+            }
+
             // If payment status is being changed to paid and no transaction ID exists
             if ($validatedData['payment_status'] === 'paid' && empty($validatedData['mpesa_reference'])) {
                 $transactionId = $validatedData['payment_method'] === 'cash' 
@@ -167,6 +178,7 @@ class POSController extends Controller
 
             $order->update([
                 ...$validatedData,
+                'customer_name' => $customerName,
                 'updated_by_user_id' => $request->user()->id,
             ]);
 
@@ -213,9 +225,20 @@ class POSController extends Controller
         \Log::info('Validation passed', $validatedData);
 
         try {
+            // Set contextual customer name if none provided
+            $customerName = $validatedData['customer_name'];
+            if (empty($customerName)) {
+                $customerName = match($validatedData['order_type']) {
+                    'dine_in' => 'Dine in customer',
+                    'takeaway' => 'Takeaway customer', 
+                    'delivery' => 'Delivery customer',
+                    default => 'Walk-in customer'
+                };
+            }
+
             $order = Order::create([
                 'order_type' => $validatedData['order_type'],
-                'customer_name' => $validatedData['customer_name'],
+                'customer_name' => $customerName,
                 'customer_phone' => $validatedData['customer_phone'],
                 'payment_method' => $validatedData['payment_method'],
                 'payment_status' => 'paid',

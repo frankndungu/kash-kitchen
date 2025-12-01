@@ -2,12 +2,44 @@ import { SVGAttributes } from 'react';
 
 export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
     return (
-        <svg {...props} viewBox="0 0 40 42" xmlns="http://www.w3.org/2000/svg">
-            <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.2 5.63325L8.6 0.855469L0 5.63325V32.1434L16.2 41.1434L32.4 32.1434V23.699L40 19.4767V9.85547L31.4 5.07769L22.8 9.85547V18.2999L17.2 21.411V5.63325ZM38 18.2999L32.4 21.411V15.2545L38 12.1434V18.2999ZM36.9409 10.4439L31.4 13.5221L25.8591 10.4439L31.4 7.36561L36.9409 10.4439ZM24.8 18.2999V12.1434L30.4 15.2545V21.411L24.8 18.2999ZM23.8 20.0323L29.3409 23.1105L16.2 30.411L10.6591 27.3328L23.8 20.0323ZM7.6 27.9212L15.2 32.1434V38.2999L2 30.9666V7.92116L7.6 11.0323V27.9212ZM8.6 9.29991L3.05913 6.22165L8.6 3.14339L14.1409 6.22165L8.6 9.29991ZM30.4 24.8101L17.2 32.1434V38.2999L30.4 30.9666V24.8101ZM9.6 11.0323L15.2 7.92117V22.5221L9.6 25.6333V11.0323Z"
-            />
+        <svg {...props} viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            {/* Background circle */}
+            <circle cx="60" cy="60" r="58" fill="#000000" stroke="#FF0000" strokeWidth="2"/>
+            
+            {/* Main "K" letter design */}
+            <g fill="#FFFFFF">
+                {/* Left vertical line of K */}
+                <rect x="25" y="25" width="8" height="70" />
+                
+                {/* Upper diagonal of K */}
+                <polygon points="33,25 50,25 95,55 87,65 40,40 33,40" />
+                
+                {/* Lower diagonal of K */}
+                <polygon points="33,80 40,80 87,55 95,65 50,95 33,95" />
+            </g>
+            
+            {/* Kitchen utensils accent - Fork and Knife crossed */}
+            <g stroke="#FF0000" strokeWidth="2" fill="none">
+                {/* Fork */}
+                <path d="M75 25 L85 35 M77 23 L87 33 M79 21 L89 31" strokeWidth="1.5"/>
+                <line x1="83" y1="27" x2="90" y2="34" strokeWidth="2"/>
+                
+                {/* Knife */}
+                <line x1="85" y1="25" x2="95" y2="35" strokeWidth="2"/>
+                <line x1="87" y1="23" x2="89" y2="25" strokeWidth="3"/>
+            </g>
+            
+            {/* Small decorative elements */}
+            <g fill="#FF0000">
+                <circle cx="70" cy="85" r="3"/>
+                <circle cx="80" cy="90" r="2"/>
+                <circle cx="85" cy="80" r="2.5"/>
+            </g>
+            
+            {/* Text "KASH" below (small) */}
+            <text x="60" y="110" textAnchor="middle" fontSize="12" fontFamily="Arial, sans-serif" fontWeight="bold" fill="#000000">
+                KASH
+            </text>
         </svg>
     );
 }

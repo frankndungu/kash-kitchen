@@ -50,7 +50,6 @@ interface DashboardProps {
         lowStockCount: number;
         outOfStockCount: number;
         pendingOrders: number;
-        longWaitOrders: number; // orders taking >30 mins
     };
     quickStats: {
         averageOrderTime: number;
@@ -138,8 +137,8 @@ export default function Dashboard({
     };
 
     const getOrderPriority = (timeElapsed: number) => {
-        if (timeElapsed > 30) return 'border-red-200 bg-red-50';
-        if (timeElapsed > 20) return 'border-orange-200 bg-orange-50';
+        if (timeElapsed > 15) return 'border-orange-200 bg-orange-50';
+        if (timeElapsed > 10) return 'border-yellow-200 bg-yellow-50';
         return 'border-gray-200 bg-white';
     };
 
@@ -225,26 +224,17 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                {/* Critical Alerts Bar */}
-                {(criticalAlerts.longWaitOrders > 0 ||
-                    criticalAlerts.outOfStockCount > 0) && (
+                {/* Critical Alerts Bar - Only Stock Related */}
+                {criticalAlerts.outOfStockCount > 0 && (
                     <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4">
                                 <AlertTriangle className="h-5 w-5 text-red-600" />
                                 <div className="flex space-x-6 text-sm">
-                                    {criticalAlerts.longWaitOrders > 0 && (
-                                        <span className="font-medium text-red-800">
-                                            {criticalAlerts.longWaitOrders}{' '}
-                                            orders waiting 10+ minutes
-                                        </span>
-                                    )}
-                                    {criticalAlerts.outOfStockCount > 0 && (
-                                        <span className="font-medium text-red-800">
-                                            {criticalAlerts.outOfStockCount}{' '}
-                                            items out of stock
-                                        </span>
-                                    )}
+                                    <span className="font-medium text-red-800">
+                                        {criticalAlerts.outOfStockCount} items
+                                        out of stock
+                                    </span>
                                 </div>
                             </div>
                             <Link
@@ -317,7 +307,7 @@ export default function Dashboard({
                             <Clock className="h-6 w-6 text-purple-600" />
                         </div>
                         <p className="mt-2 text-xs text-gray-500">
-                            Target: 15 minutes
+                            Target: 8 minutes
                         </p>
                     </div>
 
@@ -360,7 +350,7 @@ export default function Dashboard({
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Active Orders - Priority Section */}
+                    {/* Active Orders - Fast Food Context */}
                     <div className="lg:col-span-2">
                         <div className="rounded-lg border border-gray-200 bg-white">
                             <div className="border-b p-4">
@@ -403,9 +393,8 @@ export default function Dashboard({
                                                                     }
                                                                 </span>
                                                                 {order.time_elapsed >
-                                                                    20 && (
-                                                                    <span className="text-xs font-medium text-red-600">
-                                                                        URGENT{' '}
+                                                                    10 && (
+                                                                    <span className="text-xs font-medium text-orange-600">
                                                                         {formatTimeElapsed(
                                                                             order.time_elapsed,
                                                                         )}

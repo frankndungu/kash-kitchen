@@ -570,7 +570,7 @@ export default function CreateOrder({
                         <div>
                             <input
                                 type="text"
-                                placeholder="Customer Name (optional)"
+                                placeholder="Customer Name"
                                 value={data.customer_name}
                                 onChange={(e) =>
                                     setData('customer_name', e.target.value)
