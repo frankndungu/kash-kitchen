@@ -104,23 +104,23 @@ export default function SalesAnalytics({
     };
 
     const getGrowthColor = (growth: number) => {
-        if (growth > 0) return 'text-green-600';
-        if (growth < 0) return 'text-red-600';
-        return 'text-gray-600';
+        if (growth > 0) return 'text-green-600 dark:text-green-400';
+        if (growth < 0) return 'text-red-600 dark:text-red-400';
+        return 'text-gray-600 dark:text-gray-400';
     };
 
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'confirmed':
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700';
             case 'preparing':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700';
             case 'ready':
-                return 'bg-green-100 text-green-800';
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700';
             case 'completed':
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-700';
         }
     };
 
@@ -248,14 +248,14 @@ export default function SalesAnalytics({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Sales Analytics - Dashboard" />
 
-            <div className="p-6">
+            <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h1 className="flex items-center text-3xl font-bold text-gray-900">
+                        <h1 className="text-3xl font-bold text-black dark:text-white">
                             Sales Analytics
                         </h1>
-                        <p className="text-gray-600">
+                        <p className="font-medium text-gray-600 dark:text-gray-400">
                             Revenue insights and performance metrics for Kash
                             Kitchen
                         </p>
@@ -263,21 +263,21 @@ export default function SalesAnalytics({
                     <div className="flex space-x-3">
                         <button
                             onClick={exportToCSV}
-                            className="flex items-center space-x-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+                            className="flex items-center space-x-2 rounded-lg bg-green-600 px-4 py-2 font-bold text-white shadow-md transition-colors hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                         >
                             <Download className="h-4 w-4" />
                             <span>Export CSV</span>
                         </button>
                         <Link
                             href="/pos"
-                            className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                            className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white shadow-md transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                         >
                             <ShoppingCart className="h-4 w-4" />
                             <span>POS System</span>
                         </Link>
                         <Link
                             href="/inventory"
-                            className="flex items-center space-x-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                            className="flex items-center space-x-2 rounded-lg border-2 border-black px-4 py-2 font-bold text-black shadow-md transition-all hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
                         >
                             <Package className="h-4 w-4" />
                             <span>Inventory</span>
@@ -287,81 +287,81 @@ export default function SalesAnalytics({
 
                 {/* Main Stats Cards */}
                 <div className="mb-6 grid gap-4 md:grid-cols-4">
-                    <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     Today's Revenue
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {formatCurrency(salesStats.today.revenue)}
                                 </p>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                     {salesStats.today.orders} orders
                                 </p>
                             </div>
-                            <DollarSign className="h-8 w-8 text-green-600" />
+                            <DollarSign className="text-black-600 dark:text-black-400 h-8 w-8" />
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     This Week
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {formatCurrency(salesStats.week.revenue)}
                                 </p>
                                 <p
-                                    className={`text-sm ${getGrowthColor(salesStats.week.growth)}`}
+                                    className={`text-sm font-medium ${getGrowthColor(salesStats.week.growth)}`}
                                 >
                                     {salesStats.week.growth > 0 ? '+' : ''}
                                     {salesStats.week.growth.toFixed(1)}% vs last
                                     week
                                 </p>
                             </div>
-                            <TrendingUp className="h-8 w-8 text-blue-600" />
+                            <TrendingUp className="text-black-600 dark:text-black-400 h-8 w-8" />
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     This Month
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {formatCurrency(salesStats.month.revenue)}
                                 </p>
                                 <p
-                                    className={`text-sm ${getGrowthColor(salesStats.month.growth)}`}
+                                    className={`text-sm font-medium ${getGrowthColor(salesStats.month.growth)}`}
                                 >
                                     {salesStats.month.growth > 0 ? '+' : ''}
                                     {salesStats.month.growth.toFixed(1)}% vs
                                     last month
                                 </p>
                             </div>
-                            <Calendar className="h-8 w-8 text-purple-600" />
+                            <Calendar className="text-black-600 dark:text-black-400 h-8 w-8" />
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     Average Order
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {formatCurrency(
                                         salesStats.today.average_order,
                                     )}
                                 </p>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                     Today's average
                                 </p>
                             </div>
-                            <Users className="h-8 w-8 text-orange-600" />
+                            <Users className="text-black-600 dark:text-black-400 h-8 w-8" />
                         </div>
                     </div>
                 </div>
@@ -369,8 +369,8 @@ export default function SalesAnalytics({
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Payment Breakdown */}
                     <div className="lg:col-span-1">
-                        <div className="rounded-lg border border-gray-200 bg-white p-6">
-                            <h2 className="mb-4 flex items-center text-lg font-semibold">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
                                 <CreditCard className="mr-2 h-5 w-5" />
                                 Payment Methods
                             </h2>
@@ -379,17 +379,17 @@ export default function SalesAnalytics({
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
                                         <div className="mr-3 h-4 w-4 rounded bg-green-500"></div>
-                                        <span className="text-sm font-medium">
+                                        <span className="text-sm font-bold text-black dark:text-white">
                                             Cash
                                         </span>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-sm font-medium">
+                                        <div className="text-sm font-bold text-green-600 dark:text-red-400">
                                             {formatCurrency(
                                                 paymentBreakdown.cash.amount,
                                             )}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                                             {paymentBreakdown.cash.percentage.toFixed(
                                                 1,
                                             )}
@@ -401,17 +401,17 @@ export default function SalesAnalytics({
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
                                         <div className="mr-3 h-4 w-4 rounded bg-blue-500"></div>
-                                        <span className="text-sm font-medium">
+                                        <span className="text-sm font-bold text-black dark:text-white">
                                             M-Pesa
                                         </span>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-sm font-medium">
+                                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
                                             {formatCurrency(
                                                 paymentBreakdown.mpesa.amount,
                                             )}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                                             {paymentBreakdown.mpesa.percentage.toFixed(
                                                 1,
                                             )}
@@ -422,7 +422,7 @@ export default function SalesAnalytics({
 
                                 {/* Payment Method Chart */}
                                 <div className="mt-4">
-                                    <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                                    <div className="h-3 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                                         <div
                                             className="h-full bg-green-500"
                                             style={{
@@ -432,9 +432,10 @@ export default function SalesAnalytics({
                                     </div>
                                 </div>
 
-                                <div className="mt-2 text-center text-xs text-gray-500">
+                                <div className="mt-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
                                     {paymentBreakdown.cash.count} cash •{' '}
                                     {paymentBreakdown.mpesa.count} M-Pesa
+                                    transactions
                                 </div>
                             </div>
                         </div>
@@ -442,61 +443,61 @@ export default function SalesAnalytics({
 
                     {/* Top Selling Items */}
                     <div className="lg:col-span-2">
-                        <div className="rounded-lg border border-gray-200 bg-white">
-                            <div className="border-b p-4">
-                                <h2 className="flex items-center text-lg font-semibold">
+                        <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
+                                <h2 className="flex items-center text-lg font-bold text-white">
                                     <Package className="mr-2 h-5 w-5" />
                                     Top Selling Items
                                 </h2>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50">
+                                    <thead className="bg-gray-50 dark:bg-gray-700">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                            <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                                 Item
                                             </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                            <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                                 Quantity Sold
                                             </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                            <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                                 Revenue
                                             </th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                            <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                                 Unit Price
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-200">
+                                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                         {topItems.map((item, index) => (
                                             <tr
                                                 key={index}
-                                                className="hover:bg-gray-50"
+                                                className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
                                             >
                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
-                                                        <div className="mr-3 text-sm font-medium text-gray-500">
-                                                            #{index + 1}
+                                                        <div className="mr-3 flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-sm font-bold text-red-800 dark:bg-red-900 dark:text-red-200">
+                                                            {index + 1}
                                                         </div>
-                                                        <div className="font-medium text-gray-900">
+                                                        <div className="font-bold text-black dark:text-white">
                                                             {item.name}
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className="text-sm font-medium text-gray-900">
+                                                    <span className="text-sm font-bold text-black dark:text-white">
                                                         {item.quantity_sold}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className="text-sm font-medium text-green-600">
+                                                    <span className="text-sm font-bold text-red-600 dark:text-red-400">
                                                         {formatCurrency(
                                                             item.revenue,
                                                         )}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className="text-sm text-gray-900">
+                                                    <span className="text-sm font-medium text-black dark:text-white">
                                                         {formatCurrency(
                                                             item.price,
                                                         )}
@@ -512,58 +513,58 @@ export default function SalesAnalytics({
                 </div>
 
                 {/* Recent Orders */}
-                <div className="mt-6 rounded-lg border border-gray-200 bg-white">
-                    <div className="border-b p-4">
-                        <h2 className="flex items-center text-lg font-semibold">
+                <div className="mt-6 overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
+                        <h2 className="flex items-center text-lg font-bold text-white">
                             <ShoppingCart className="mr-2 h-5 w-5" />
                             Recent Orders
                         </h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50">
+                            <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Order
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Customer
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Amount
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Payment
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Status
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Time
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                 {recentOrders.map((order) => (
                                     <tr
                                         key={order.id}
-                                        className="hover:bg-gray-50"
+                                        className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
                                     >
                                         <td className="px-4 py-4 whitespace-nowrap">
                                             <Link
                                                 href={`/pos/${order.id}`}
-                                                className="font-medium text-blue-600 hover:text-blue-900"
+                                                className="font-bold text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                                             >
                                                 {order.order_number}
                                             </Link>
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-gray-900">
+                                            <span className="text-sm font-medium text-black dark:text-white">
                                                 {order.customer_name}
                                             </span>
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap">
-                                            <span className="text-sm font-medium text-gray-900">
+                                            <span className="text-sm font-bold text-red-600 dark:text-red-400">
                                                 {formatCurrency(
                                                     order.total_amount,
                                                 )}
@@ -571,11 +572,11 @@ export default function SalesAnalytics({
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap">
                                             <span
-                                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${
                                                     order.payment_method ===
                                                     'cash'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-blue-100 text-blue-800'
+                                                        ? 'border-green-200 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900 dark:text-green-200'
+                                                        : 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-700 dark:bg-blue-900 dark:text-blue-200'
                                                 }`}
                                             >
                                                 {order.payment_method === 'cash'
@@ -585,7 +586,7 @@ export default function SalesAnalytics({
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap">
                                             <span
-                                                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.order_status)}`}
+                                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(order.order_status)}`}
                                             >
                                                 {order.order_status
                                                     .charAt(0)
@@ -594,7 +595,7 @@ export default function SalesAnalytics({
                                             </span>
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap">
-                                            <span className="text-sm text-gray-500">
+                                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                                                 {formatDate(order.created_at)}
                                             </span>
                                         </td>

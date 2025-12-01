@@ -113,14 +113,14 @@ export default function Edit({ user, order }: EditProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit Order #${order.order_number}`} />
 
-            <div className="p-6">
+            <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
+                        <h1 className="text-3xl font-bold text-black dark:text-white">
                             Edit Order #{order.order_number}
                         </h1>
-                        <p className="text-gray-600">
+                        <p className="font-medium text-gray-600 dark:text-gray-400">
                             Modify order details and payment information
                         </p>
                     </div>
@@ -131,13 +131,13 @@ export default function Edit({ user, order }: EditProps) {
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Customer Information */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Customer Information
                                 </h2>
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Customer Name
                                         </label>
                                         <input
@@ -149,18 +149,18 @@ export default function Edit({ user, order }: EditProps) {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Customer name"
                                         />
                                         {errors.customer_name && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.customer_name}
                                             </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Phone Number
                                         </label>
                                         <input
@@ -172,11 +172,11 @@ export default function Edit({ user, order }: EditProps) {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Phone number"
                                         />
                                         {errors.customer_phone && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.customer_phone}
                                             </p>
                                         )}
@@ -185,13 +185,13 @@ export default function Edit({ user, order }: EditProps) {
                             </div>
 
                             {/* Order Details */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Order Details
                                 </h2>
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Order Type
                                         </label>
                                         <select
@@ -202,7 +202,7 @@ export default function Edit({ user, order }: EditProps) {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="dine_in">
                                                 Dine In
@@ -215,14 +215,14 @@ export default function Edit({ user, order }: EditProps) {
                                             </option>
                                         </select>
                                         {errors.order_type && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.order_type}
                                             </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Order Status
                                         </label>
                                         <select
@@ -233,7 +233,7 @@ export default function Edit({ user, order }: EditProps) {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="pending">
                                                 Pending
@@ -253,7 +253,7 @@ export default function Edit({ user, order }: EditProps) {
                                             </option>
                                         </select>
                                         {errors.order_status && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.order_status}
                                             </p>
                                         )}
@@ -262,17 +262,17 @@ export default function Edit({ user, order }: EditProps) {
                             </div>
 
                             {/* Payment Information */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Payment Information
                                 </h2>
-                                <div className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Payment Method
                                         </label>
                                         <div className="flex space-x-4">
-                                            <label className="flex items-center">
+                                            <label className="flex cursor-pointer items-center">
                                                 <input
                                                     type="radio"
                                                     value="cash"
@@ -286,12 +286,14 @@ export default function Edit({ user, order }: EditProps) {
                                                             e.target.value,
                                                         )
                                                     }
-                                                    className="mr-2"
+                                                    className="mr-2 text-red-600"
                                                 />
-                                                <Banknote className="mr-2 h-4 w-4 text-gray-600" />
-                                                <span>Cash Payment</span>
+                                                <Banknote className="mr-1 h-4 w-4 text-green-600 dark:text-green-400" />
+                                                <span className="text-sm font-bold text-black dark:text-white">
+                                                    Cash
+                                                </span>
                                             </label>
-                                            <label className="flex items-center">
+                                            <label className="flex cursor-pointer items-center">
                                                 <input
                                                     type="radio"
                                                     value="mpesa"
@@ -305,21 +307,23 @@ export default function Edit({ user, order }: EditProps) {
                                                             e.target.value,
                                                         )
                                                     }
-                                                    className="mr-2"
+                                                    className="mr-2 text-red-600"
                                                 />
-                                                <Smartphone className="mr-2 h-4 w-4 text-gray-600" />
-                                                <span>M-Pesa Payment</span>
+                                                <Smartphone className="mr-1 h-4 w-4 text-green-600 dark:text-green-400" />
+                                                <span className="text-sm font-bold text-black dark:text-white">
+                                                    M-Pesa
+                                                </span>
                                             </label>
                                         </div>
                                         {errors.payment_method && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.payment_method}
                                             </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Payment Status
                                         </label>
                                         <select
@@ -330,7 +334,7 @@ export default function Edit({ user, order }: EditProps) {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="pending">
                                                 Pending
@@ -344,63 +348,55 @@ export default function Edit({ user, order }: EditProps) {
                                             </option>
                                         </select>
                                         {errors.payment_status && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.payment_status}
                                             </p>
                                         )}
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <div className="mb-2 flex items-center justify-between">
-                                            <label className="text-sm font-medium text-gray-700">
-                                                Transaction ID
-                                            </label>
-                                            <button
-                                                type="button"
-                                                onClick={generateTransactionId}
-                                                className="text-sm text-blue-600 hover:text-blue-800"
-                                            >
-                                                Generate ID
-                                            </button>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={data.mpesa_reference}
-                                            onChange={(e) =>
-                                                setData(
-                                                    'mpesa_reference',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-                                            placeholder={
-                                                data.payment_method === 'mpesa'
-                                                    ? 'M-Pesa transaction ID (e.g., QHR41H9K2C)'
-                                                    : 'Cash transaction ID'
-                                            }
-                                        />
-                                        <p className="mt-1 text-sm text-gray-500">
-                                            {data.payment_method === 'mpesa'
-                                                ? 'Enter the M-Pesa confirmation code provided by the customer'
-                                                : 'Auto-generated for cash payments or enter custom reference'}
-                                        </p>
-                                        {errors.mpesa_reference && (
-                                            <p className="mt-1 text-sm text-red-600">
-                                                {errors.mpesa_reference}
-                                            </p>
-                                        )}
+                                {/* Transaction ID */}
+                                <div className="mt-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
+                                            Transaction ID
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={generateTransactionId}
+                                            className="rounded-lg bg-red-100 px-3 py-1 text-xs font-bold text-red-800 transition-colors hover:bg-red-200 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
+                                        >
+                                            Generate ID
+                                        </button>
                                     </div>
+                                    <input
+                                        type="text"
+                                        value={data.mpesa_reference}
+                                        onChange={(e) =>
+                                            setData(
+                                                'mpesa_reference',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 font-mono text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="Transaction reference"
+                                    />
+                                    {errors.mpesa_reference && (
+                                        <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
+                                            {errors.mpesa_reference}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Notes */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
-                                    Notes
+                            {/* Additional Notes */}
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
+                                    Additional Notes
                                 </h2>
-                                <div className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Kitchen Notes
                                         </label>
                                         <textarea
@@ -412,18 +408,18 @@ export default function Edit({ user, order }: EditProps) {
                                                 )
                                             }
                                             rows={3}
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Special instructions for kitchen staff..."
                                         />
                                         {errors.kitchen_notes && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.kitchen_notes}
                                             </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                             Customer Notes
                                         </label>
                                         <textarea
@@ -435,11 +431,11 @@ export default function Edit({ user, order }: EditProps) {
                                                 )
                                             }
                                             rows={3}
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Notes from customer..."
                                         />
                                         {errors.customer_notes && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
                                                 {errors.customer_notes}
                                             </p>
                                         )}
@@ -452,7 +448,7 @@ export default function Edit({ user, order }: EditProps) {
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="flex items-center space-x-2 rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex items-center space-x-2 rounded-lg bg-red-600 px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500 dark:hover:bg-red-600"
                                 >
                                     <Save className="h-4 w-4" />
                                     <span>
@@ -467,7 +463,7 @@ export default function Edit({ user, order }: EditProps) {
                                     onClick={() =>
                                         router.visit(`/pos/${order.id}`)
                                     }
-                                    className="flex items-center space-x-2 rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50"
+                                    className="flex items-center space-x-2 rounded-lg border-2 border-black px-6 py-3 font-bold text-black shadow-md transition-all hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
                                     <X className="h-4 w-4" />
                                     <span>Cancel</span>
@@ -478,28 +474,28 @@ export default function Edit({ user, order }: EditProps) {
 
                     {/* Order Items (Read-only) */}
                     <div className="space-y-6">
-                        <div className="rounded-lg border border-gray-200 bg-white p-6">
-                            <h2 className="mb-4 text-lg font-semibold">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                 Order Items
                             </h2>
                             <div className="space-y-3">
                                 {order.items.map((item) => (
                                     <div
                                         key={item.id}
-                                        className="flex justify-between text-sm"
+                                        className="flex justify-between rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700"
                                     >
                                         <div>
-                                            <p className="font-medium">
+                                            <p className="font-bold text-black dark:text-white">
                                                 {item.menu_item.name}
                                             </p>
-                                            <p className="text-gray-600">
+                                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                                 {formatCurrency(
                                                     item.unit_price,
                                                 )}{' '}
                                                 × {item.quantity}
                                             </p>
                                         </div>
-                                        <p className="font-semibold">
+                                        <p className="font-bold text-red-600 dark:text-red-400">
                                             {formatCurrency(item.item_total)}
                                         </p>
                                     </div>
@@ -507,27 +503,33 @@ export default function Edit({ user, order }: EditProps) {
                             </div>
                         </div>
 
-                        <div className="rounded-lg border border-gray-200 bg-white p-6">
-                            <h2 className="mb-4 text-lg font-semibold">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                 Order Total
                             </h2>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span>Subtotal</span>
-                                    <span>
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                                        Subtotal
+                                    </span>
+                                    <span className="font-bold text-black dark:text-white">
                                         {formatCurrency(order.subtotal)}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Tax (16% VAT)</span>
-                                    <span>
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                                        Tax (16% VAT)
+                                    </span>
+                                    <span className="font-bold text-black dark:text-white">
                                         {formatCurrency(order.tax_amount)}
                                     </span>
                                 </div>
-                                <hr />
-                                <div className="flex justify-between font-bold">
-                                    <span>Total</span>
-                                    <span className="text-green-600">
+                                <hr className="border-gray-300 dark:border-gray-600" />
+                                <div className="flex justify-between text-xl font-bold">
+                                    <span className="text-black dark:text-white">
+                                        Total
+                                    </span>
+                                    <span className="text-red-600 dark:text-red-400">
                                         {formatCurrency(order.total_amount)}
                                     </span>
                                 </div>

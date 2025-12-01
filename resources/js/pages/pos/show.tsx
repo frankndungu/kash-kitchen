@@ -64,17 +64,17 @@ export default function Show({ user, order }: ShowProps) {
         return (
             <AppLayout>
                 <Head title="Order Not Found" />
-                <div className="p-6">
+                <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
                     <div className="text-center">
-                        <h1 className="text-2xl font-bold text-red-600">
+                        <h1 className="text-3xl font-bold text-red-600 dark:text-red-400">
                             Order Not Found
                         </h1>
-                        <p className="mt-2 text-gray-600">
+                        <p className="mt-4 font-medium text-gray-600 dark:text-gray-400">
                             The order you're looking for doesn't exist.
                         </p>
                         <Link
                             href="/pos"
-                            className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                            className="mt-6 inline-block rounded-lg bg-red-600 px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                         >
                             Back to Orders
                         </Link>
@@ -106,29 +106,38 @@ export default function Show({ user, order }: ShowProps) {
 
     const getStatusBadge = (status: string) => {
         const styles = {
-            pending: 'bg-yellow-100 text-yellow-800',
-            confirmed: 'bg-blue-100 text-blue-800',
-            preparing: 'bg-orange-100 text-orange-800',
-            ready: 'bg-green-100 text-green-800',
-            completed: 'bg-gray-100 text-gray-800',
-            cancelled: 'bg-red-100 text-red-800',
+            pending:
+                'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-700',
+            confirmed:
+                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700',
+            preparing:
+                'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700',
+            ready: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700',
+            completed:
+                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600',
+            cancelled:
+                'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700',
         };
 
         return (
-            styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+            styles[status as keyof typeof styles] ||
+            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
         );
     };
 
     const getPaymentStatusBadge = (status: string) => {
         const styles = {
-            pending: 'bg-orange-100 text-orange-800',
-            paid: 'bg-green-100 text-green-800',
-            failed: 'bg-red-100 text-red-800',
-            refunded: 'bg-gray-100 text-gray-800',
+            pending:
+                'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border border-orange-200 dark:border-orange-700',
+            paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700',
+            failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700',
+            refunded:
+                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600',
         };
 
         return (
-            styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'
+            styles[status as keyof typeof styles] ||
+            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
         );
     };
 
@@ -191,208 +200,213 @@ export default function Show({ user, order }: ShowProps) {
             <AppLayout breadcrumbs={breadcrumbs}>
                 <Head title={`Order #${order.order_number}`} />
 
-                <div className="p-6">
-                    {/* Header - Hidden on print */}
-                    <div className="mb-6 flex items-center justify-between print:hidden">
+                <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
+                    {/* Header */}
+                    <div className="mb-6 flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
+                            <h1 className="text-3xl font-bold text-black dark:text-white">
                                 Order #{order.order_number}
                             </h1>
-                            <p className="text-gray-600">
-                                Placed on {formatDate(order.created_at)}
-                            </p>
+                            <div className="mt-2 flex items-center space-x-4">
+                                <span
+                                    className={`inline-flex items-center space-x-2 rounded-full px-4 py-2 text-sm font-bold ${getStatusBadge(order.order_status)}`}
+                                >
+                                    {getStatusIcon(order.order_status)}
+                                    <span className="capitalize">
+                                        {order.order_status}
+                                    </span>
+                                </span>
+                                <span className="font-medium text-gray-600 dark:text-gray-400">
+                                    {formatDate(order.created_at)}
+                                </span>
+                            </div>
                         </div>
+
                         <div className="flex space-x-3">
                             <button
                                 onClick={handlePrint}
-                                className="flex items-center space-x-2 rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+                                className="flex items-center space-x-2 rounded-lg border-2 border-black px-4 py-2 font-bold text-black shadow-md transition-all hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
                             >
                                 <Printer className="h-4 w-4" />
                                 <span>Print Receipt</span>
                             </button>
                             <Link
                                 href={`/pos/${order.id}/edit`}
-                                className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                                className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white shadow-md transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                             >
                                 <Edit className="h-4 w-4" />
                                 <span>Edit Order</span>
-                            </Link>
-                            <Link
-                                href="/pos"
-                                className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
-                            >
-                                Back to Orders
                             </Link>
                         </div>
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-3">
-                        {/* Order Details */}
+                        {/* Order Items */}
                         <div className="lg:col-span-2">
-                            {/* Order Status */}
-                            <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
-                                    Order Status
-                                </h2>
-                                <div className="flex items-center space-x-4">
-                                    <span
-                                        className={`inline-flex items-center space-x-2 rounded-full px-4 py-2 text-sm font-medium ${getStatusBadge(order.order_status)}`}
-                                    >
-                                        {getStatusIcon(order.order_status)}
-                                        <span className="capitalize">
-                                            {order.order_status}
-                                        </span>
-                                    </span>
-                                    <span className="text-sm text-gray-500">
-                                        Type:{' '}
-                                        <span className="capitalize">
-                                            {order.order_type.replace('_', ' ')}
-                                        </span>
-                                    </span>
+                            <div className="overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
+                                    <h2 className="flex items-center text-lg font-bold text-white">
+                                        <ShoppingCart className="mr-2 h-5 w-5" />
+                                        Order Items ({order.items.length})
+                                    </h2>
                                 </div>
-                            </div>
 
-                            {/* Order Items */}
-                            <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
-                                    Order Items
-                                </h2>
-                                <div className="space-y-4">
-                                    {order.items && order.items.length > 0 ? (
-                                        order.items.map((item) => (
+                                <div className="p-6">
+                                    <div className="space-y-4">
+                                        {order.items.map((item) => (
                                             <div
                                                 key={item.id}
-                                                className="flex items-center justify-between border-b pb-4 last:border-b-0"
+                                                className="flex items-start justify-between rounded-lg border-2 border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700"
                                             >
                                                 <div className="flex-1">
-                                                    <h3 className="font-medium text-gray-900">
-                                                        {item.menu_item?.name ||
-                                                            'Unknown Item'}
-                                                    </h3>
-                                                    {item.menu_item
-                                                        ?.description && (
-                                                        <p className="text-sm text-gray-600">
-                                                            {
-                                                                item.menu_item
-                                                                    .description
-                                                            }
-                                                        </p>
-                                                    )}
-                                                    {item.special_instructions && (
-                                                        <p className="text-sm text-blue-600">
-                                                            Note:{' '}
-                                                            {
-                                                                item.special_instructions
-                                                            }
-                                                        </p>
-                                                    )}
+                                                    <div className="flex items-center space-x-3">
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-sm font-bold text-red-800 dark:bg-red-900 dark:text-red-200">
+                                                            {item.quantity}
+                                                        </span>
+                                                        <div>
+                                                            <h3 className="font-bold text-black dark:text-white">
+                                                                {
+                                                                    item
+                                                                        .menu_item
+                                                                        .name
+                                                                }
+                                                            </h3>
+                                                            {item.menu_item
+                                                                .description && (
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                                    {
+                                                                        item
+                                                                            .menu_item
+                                                                            .description
+                                                                    }
+                                                                </p>
+                                                            )}
+                                                            {item.special_instructions && (
+                                                                <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
+                                                                    Special:{' '}
+                                                                    {
+                                                                        item.special_instructions
+                                                                    }
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
+
                                                 <div className="text-right">
-                                                    <p className="text-sm text-gray-600">
+                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                                         {formatCurrency(
                                                             item.unit_price,
                                                         )}{' '}
-                                                        × {item.quantity}
+                                                        each
                                                     </p>
-                                                    <p className="font-semibold text-gray-900">
+                                                    <p className="text-lg font-bold text-red-600 dark:text-red-400">
                                                         {formatCurrency(
                                                             item.item_total,
                                                         )}
                                                     </p>
                                                 </div>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-center text-gray-500">
-                                            No items found in this order
-                                        </p>
+                                        ))}
+                                    </div>
+
+                                    {(order.kitchen_notes ||
+                                        order.customer_notes) && (
+                                        <div className="mt-6 space-y-4">
+                                            {order.kitchen_notes && (
+                                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/20">
+                                                    <h4 className="font-bold text-blue-800 dark:text-blue-200">
+                                                        Kitchen Notes:
+                                                    </h4>
+                                                    <p className="font-medium text-blue-700 dark:text-blue-300">
+                                                        {order.kitchen_notes}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {order.customer_notes && (
+                                                <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-700 dark:bg-green-900/20">
+                                                    <h4 className="font-bold text-green-800 dark:text-green-200">
+                                                        Customer Notes:
+                                                    </h4>
+                                                    <p className="font-medium text-green-700 dark:text-green-300">
+                                                        {order.customer_notes}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
-
-                            {/* Notes */}
-                            {(order.kitchen_notes || order.customer_notes) && (
-                                <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                    <h2 className="mb-4 text-lg font-semibold">
-                                        Notes
-                                    </h2>
-                                    {order.kitchen_notes && (
-                                        <div className="mb-4">
-                                            <h3 className="font-medium text-gray-700">
-                                                Kitchen Notes:
-                                            </h3>
-                                            <p className="text-gray-600">
-                                                {order.kitchen_notes}
-                                            </p>
-                                        </div>
-                                    )}
-                                    {order.customer_notes && (
-                                        <div>
-                                            <h3 className="font-medium text-gray-700">
-                                                Customer Notes:
-                                            </h3>
-                                            <p className="text-gray-600">
-                                                {order.customer_notes}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
 
-                        {/* Sidebar */}
+                        {/* Order Details Sidebar */}
                         <div className="space-y-6">
                             {/* Customer Information */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 flex items-center text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
                                     <User className="mr-2 h-5 w-5" />
                                     Customer Information
                                 </h2>
                                 <div className="space-y-3">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-700">
-                                            Name
+                                        <span className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
+                                            Order Type
+                                        </span>
+                                        <p className="font-bold text-black capitalize dark:text-white">
+                                            {order.order_type.replace('_', ' ')}
                                         </p>
-                                        <p className="text-gray-900">
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
+                                            Customer Name
+                                        </span>
+                                        <p className="font-bold text-black dark:text-white">
                                             {order.customer_name ||
                                                 'Walk-in Customer'}
                                         </p>
                                     </div>
                                     {order.customer_phone && (
                                         <div>
-                                            <p className="text-sm font-medium text-gray-700">
-                                                Phone
-                                            </p>
-                                            <p className="flex items-center text-gray-900">
-                                                <Phone className="mr-1 h-4 w-4" />
-                                                {order.customer_phone}
-                                            </p>
+                                            <span className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
+                                                Phone Number
+                                            </span>
+                                            <div className="flex items-center space-x-2">
+                                                <p className="font-bold text-black dark:text-white">
+                                                    {order.customer_phone}
+                                                </p>
+                                                <a
+                                                    href={`tel:${order.customer_phone}`}
+                                                    className="text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                                >
+                                                    <Phone className="h-4 w-4" />
+                                                </a>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
                             {/* Payment Information */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 flex items-center text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
                                     <Package className="mr-2 h-5 w-5" />
                                     Payment Information
                                 </h2>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600">
+                                        <span className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                             Payment Method
                                         </span>
-                                        <span className="font-medium capitalize">
+                                        <span className="font-bold text-black capitalize dark:text-white">
                                             {order.payment_method}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600">
+                                        <span className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                             Payment Status
                                         </span>
                                         <span
-                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getPaymentStatusBadge(order.payment_status)}`}
+                                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${getPaymentStatusBadge(order.payment_status)}`}
                                         >
                                             {order.payment_status ===
                                                 'paid' && (
@@ -408,11 +422,11 @@ export default function Show({ user, order }: ShowProps) {
                                         </span>
                                     </div>
                                     {order.mpesa_reference && (
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-700">
+                                        <div className="rounded-lg border border-gray-200 bg-gray-100 p-3 dark:border-gray-600 dark:bg-gray-700">
+                                            <p className="text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
                                                 Transaction ID
                                             </p>
-                                            <p className="font-mono text-sm text-gray-900">
+                                            <p className="font-mono font-bold text-black dark:text-white">
                                                 {order.mpesa_reference}
                                             </p>
                                         </div>
@@ -421,34 +435,34 @@ export default function Show({ user, order }: ShowProps) {
                             </div>
 
                             {/* Order Summary */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Order Summary
                                 </h2>
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">
+                                        <span className="font-medium text-gray-600 dark:text-gray-400">
                                             Subtotal
                                         </span>
-                                        <span>
+                                        <span className="font-bold text-black dark:text-white">
                                             {formatCurrency(order.subtotal)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">
+                                        <span className="font-medium text-gray-600 dark:text-gray-400">
                                             Tax (16% VAT)
                                         </span>
-                                        <span>
+                                        <span className="font-bold text-black dark:text-white">
                                             {formatCurrency(order.tax_amount)}
                                         </span>
                                     </div>
                                     {order.discount_amount &&
                                         order.discount_amount > 0 && (
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">
+                                                <span className="font-medium text-gray-600 dark:text-gray-400">
                                                     Discount
                                                 </span>
-                                                <span className="text-red-600">
+                                                <span className="font-bold text-red-600 dark:text-red-400">
                                                     -
                                                     {formatCurrency(
                                                         order.discount_amount,
@@ -456,10 +470,12 @@ export default function Show({ user, order }: ShowProps) {
                                                 </span>
                                             </div>
                                         )}
-                                    <hr />
-                                    <div className="flex justify-between text-lg font-bold">
-                                        <span>Total</span>
-                                        <span className="text-green-600">
+                                    <hr className="border-gray-300 dark:border-gray-600" />
+                                    <div className="flex justify-between text-xl font-bold">
+                                        <span className="text-black dark:text-white">
+                                            Total
+                                        </span>
+                                        <span className="text-red-600 dark:text-red-400">
                                             {formatCurrency(order.total_amount)}
                                         </span>
                                     </div>

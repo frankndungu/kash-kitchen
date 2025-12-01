@@ -260,43 +260,47 @@ export default function CreateOrder({
             <AppLayout breadcrumbs={paymentBreadcrumbs}>
                 <Head title="Process Payment" />
 
-                <div className="min-h-screen bg-gray-100 p-6">
+                <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
                     <div className="mx-auto max-w-2xl">
-                        <div className="rounded-lg bg-white p-6">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                             <div className="mb-6 text-center">
-                                <h1 className="mb-2 text-2xl font-bold text-green-600">
+                                <h1 className="mb-2 text-3xl font-bold text-green-600 dark:text-green-400">
                                     Order Created Successfully!
                                 </h1>
-                                <p className="text-gray-600">
+                                <p className="font-medium text-gray-600 dark:text-gray-400">
                                     Order #{createdOrder.order_number} | Total:{' '}
-                                    {formatCurrency(calculateTotal())}
+                                    <span className="font-bold text-red-600 dark:text-red-400">
+                                        {formatCurrency(calculateTotal())}
+                                    </span>
                                 </p>
                             </div>
 
                             {/* Order Summary */}
-                            <div className="mb-6 rounded-lg bg-gray-50 p-4">
-                                <h3 className="mb-3 font-semibold">
+                            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
+                                <h3 className="mb-3 font-bold text-black dark:text-white">
                                     Order Summary
                                 </h3>
                                 {cart.map((item) => (
                                     <div
                                         key={item.menu_item_id}
-                                        className="flex items-center justify-between py-2"
+                                        className="flex items-center justify-between border-b border-gray-200 py-2 last:border-b-0 dark:border-gray-600"
                                     >
-                                        <span>
+                                        <span className="text-gray-700 dark:text-gray-300">
                                             {item.name} x{item.quantity}
                                         </span>
-                                        <span className="font-semibold">
+                                        <span className="font-bold text-red-600 dark:text-red-400">
                                             {formatCurrency(
                                                 item.price * item.quantity,
                                             )}
                                         </span>
                                     </div>
                                 ))}
-                                <div className="mt-2 border-t pt-2">
-                                    <div className="flex items-center justify-between text-lg font-bold">
-                                        <span>Total:</span>
-                                        <span className="text-green-600">
+                                <div className="mt-3 border-t border-gray-300 pt-3 dark:border-gray-600">
+                                    <div className="flex items-center justify-between text-xl font-bold">
+                                        <span className="text-black dark:text-white">
+                                            Total:
+                                        </span>
+                                        <span className="text-red-600 dark:text-red-400">
                                             {formatCurrency(calculateTotal())}
                                         </span>
                                     </div>
@@ -305,11 +309,11 @@ export default function CreateOrder({
 
                             {/* Payment Method Selection */}
                             <div className="mb-6">
-                                <h3 className="mb-3 font-semibold">
+                                <h3 className="mb-3 font-bold text-black dark:text-white">
                                     Payment Method
                                 </h3>
                                 <div className="space-y-3">
-                                    <label className="flex cursor-pointer items-center rounded-lg border p-3 hover:bg-gray-50">
+                                    <label className="flex cursor-pointer items-center rounded-lg border-2 border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
                                         <input
                                             type="radio"
                                             value="cash"
@@ -322,20 +326,20 @@ export default function CreateOrder({
                                                     e.target.value,
                                                 )
                                             }
-                                            className="mr-3"
+                                            className="mr-3 text-red-600"
                                         />
                                         <div>
-                                            <p className="font-medium">
+                                            <p className="font-bold text-black dark:text-white">
                                                 Cash Payment
                                             </p>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 Transaction ID will be generated
                                                 automatically
                                             </p>
                                         </div>
                                     </label>
 
-                                    <label className="flex cursor-pointer items-center rounded-lg border p-3 hover:bg-gray-50">
+                                    <label className="flex cursor-pointer items-center rounded-lg border-2 border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
                                         <input
                                             type="radio"
                                             value="mpesa"
@@ -348,13 +352,13 @@ export default function CreateOrder({
                                                     e.target.value,
                                                 )
                                             }
-                                            className="mr-3"
+                                            className="mr-3 text-red-600"
                                         />
                                         <div>
-                                            <p className="font-medium">
+                                            <p className="font-bold text-black dark:text-white">
                                                 M-Pesa Payment
                                             </p>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 Customer pays via M-Pesa, enter
                                                 transaction ID below
                                             </p>
@@ -366,7 +370,7 @@ export default function CreateOrder({
                             {/* M-Pesa Transaction ID Input */}
                             {data.payment_method === 'mpesa' && (
                                 <div className="mb-6">
-                                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                                    <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                         M-Pesa Transaction ID
                                     </label>
                                     <input
@@ -379,10 +383,10 @@ export default function CreateOrder({
                                                 e.target.value,
                                             )
                                         }
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                        className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         required
                                     />
-                                    <p className="mt-1 text-sm text-gray-500">
+                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                         Customer will provide this after
                                         completing M-Pesa payment
                                     </p>
@@ -397,14 +401,14 @@ export default function CreateOrder({
                                         data.payment_method === 'mpesa' &&
                                         !data.mpesa_reference
                                     }
-                                    className="flex-1 rounded-lg bg-green-600 py-3 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex-1 rounded-lg bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500 dark:hover:bg-red-600"
                                 >
                                     Complete Payment
                                 </button>
 
                                 <button
                                     onClick={resetOrder}
-                                    className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50"
+                                    className="rounded-lg border-2 border-black px-6 py-3 font-bold text-black transition-colors hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
                                 >
                                     New Order
                                 </button>
@@ -420,16 +424,16 @@ export default function CreateOrder({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="New Order" />
 
-            <div className="flex h-screen bg-gray-100">
+            <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
                 {/* Main Menu Area */}
                 <div className="flex-1 p-6">
                     {/* Header */}
                     <div className="mb-6 flex items-center justify-between">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">
+                            <h1 className="text-3xl font-bold text-black dark:text-white">
                                 New Order
                             </h1>
-                            <p className="text-gray-600">
+                            <p className="font-medium text-gray-600 dark:text-gray-400">
                                 Cashier: {user.name}
                             </p>
                         </div>
@@ -439,7 +443,7 @@ export default function CreateOrder({
                                     setSelectedCategory(null);
                                     setMenuItems([]);
                                 }}
-                                className="flex items-center text-blue-600 hover:text-blue-800"
+                                className="flex items-center font-bold text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back to Categories
@@ -450,7 +454,7 @@ export default function CreateOrder({
                     {/* Categories or Menu Items */}
                     {!selectedCategory ? (
                         <div>
-                            <h2 className="mb-4 text-lg font-semibold">
+                            <h2 className="mb-4 text-xl font-bold text-black dark:text-white">
                                 Select Category
                             </h2>
                             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -460,9 +464,9 @@ export default function CreateOrder({
                                         onClick={() =>
                                             loadMenuItems(category.id)
                                         }
-                                        className="rounded-xl border-2 border-gray-200 p-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
+                                        className="rounded-xl border-2 border-gray-300 bg-white p-6 text-center transition-all hover:border-red-500 hover:bg-red-50 hover:shadow-lg dark:border-gray-600 dark:bg-gray-800 dark:hover:border-red-400 dark:hover:bg-red-900/20"
                                     >
-                                        <h3 className="font-semibold text-gray-900">
+                                        <h3 className="text-lg font-bold text-black dark:text-white">
                                             {category.name}
                                         </h3>
                                     </button>
@@ -471,14 +475,14 @@ export default function CreateOrder({
                         </div>
                     ) : (
                         <div>
-                            <h2 className="mb-4 text-lg font-semibold">
+                            <h2 className="mb-4 text-xl font-bold text-black dark:text-white">
                                 {selectedCategoryName}
                             </h2>
 
                             {loadingItems ? (
                                 <div className="py-12 text-center">
-                                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-                                    <p className="mt-2 text-gray-600">
+                                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-600 border-r-transparent"></div>
+                                    <p className="mt-2 font-medium text-gray-600 dark:text-gray-400">
                                         Loading menu items...
                                     </p>
                                 </div>
@@ -487,33 +491,33 @@ export default function CreateOrder({
                                     {menuItems.map((item) => (
                                         <div
                                             key={item.id}
-                                            className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
+                                            className="rounded-lg border-2 border-gray-200 bg-white p-4 transition-all hover:border-red-300 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-red-600"
                                         >
                                             <div className="mb-2 flex items-start justify-between">
-                                                <h3 className="font-semibold text-gray-900">
+                                                <h3 className="font-bold text-black dark:text-white">
                                                     {item.name}
                                                 </h3>
                                                 {item.is_combo && (
-                                                    <span className="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-800">
+                                                    <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-800 dark:bg-red-900 dark:text-red-200">
                                                         Combo
                                                     </span>
                                                 )}
                                             </div>
 
                                             {item.description && (
-                                                <p className="mb-3 text-sm text-gray-600">
+                                                <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
                                                     {item.description}
                                                 </p>
                                             )}
 
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <p className="text-lg font-bold text-green-600">
+                                                    <p className="text-xl font-bold text-red-600 dark:text-red-400">
                                                         {formatCurrency(
                                                             item.price,
                                                         )}
                                                     </p>
-                                                    <div className="flex items-center text-xs text-gray-500">
+                                                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                                                         <Clock className="mr-1 h-3 w-3" />
                                                         {
                                                             item.preparation_time_minutes
@@ -526,7 +530,7 @@ export default function CreateOrder({
                                                     onClick={() =>
                                                         addToCart(item)
                                                     }
-                                                    className="flex items-center rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
+                                                    className="flex items-center rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                                                 >
                                                     <Plus className="mr-1 h-4 w-4" />
                                                     Add
@@ -541,16 +545,18 @@ export default function CreateOrder({
                 </div>
 
                 {/* Order Details Sidebar */}
-                <div className="w-96 border-l border-gray-200 bg-white p-6">
+                <div className="w-96 border-l-2 border-gray-300 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                     <div className="mb-6 flex items-center">
-                        <ShoppingCart className="mr-2 h-6 w-6 text-gray-700" />
-                        <h2 className="text-lg font-semibold">Order Details</h2>
+                        <ShoppingCart className="mr-2 h-6 w-6 text-red-600 dark:text-red-400" />
+                        <h2 className="text-lg font-bold text-black dark:text-white">
+                            Order Details
+                        </h2>
                     </div>
 
                     <form onSubmit={handleCreateOrder} className="space-y-4">
                         {/* Order Type */}
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                            <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                 Order Type
                             </label>
                             <select
@@ -558,7 +564,7 @@ export default function CreateOrder({
                                 onChange={(e) =>
                                     setData('order_type', e.target.value)
                                 }
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                             >
                                 <option value="dine_in">Dine In</option>
                                 <option value="takeaway">Takeaway</option>
@@ -575,7 +581,7 @@ export default function CreateOrder({
                                 onChange={(e) =>
                                     setData('customer_name', e.target.value)
                                 }
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                             />
                         </div>
 
@@ -587,13 +593,13 @@ export default function CreateOrder({
                                 onChange={(e) =>
                                     setData('customer_phone', e.target.value)
                                 }
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                className="w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                             />
                         </div>
 
                         {/* Payment Method Selection */}
                         <div>
-                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                            <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                 Payment Method
                             </label>
                             <div className="space-y-2">
@@ -608,10 +614,10 @@ export default function CreateOrder({
                                                 e.target.value,
                                             )
                                         }
-                                        className="mr-2"
+                                        className="mr-2 text-red-600"
                                         required
                                     />
-                                    <span className="text-sm">
+                                    <span className="text-sm font-medium text-black dark:text-white">
                                         Cash Payment
                                     </span>
                                 </label>
@@ -628,10 +634,10 @@ export default function CreateOrder({
                                                 e.target.value,
                                             )
                                         }
-                                        className="mr-2"
+                                        className="mr-2 text-red-600"
                                         required
                                     />
-                                    <span className="text-sm">
+                                    <span className="text-sm font-medium text-black dark:text-white">
                                         M-Pesa Payment
                                     </span>
                                 </label>
@@ -639,11 +645,13 @@ export default function CreateOrder({
                         </div>
 
                         {/* Cart Items */}
-                        <div className="border-t pt-4">
-                            <h3 className="mb-3 font-medium">Order Items</h3>
+                        <div className="border-t-2 border-gray-200 pt-4 dark:border-gray-700">
+                            <h3 className="mb-3 font-bold text-black dark:text-white">
+                                Order Items
+                            </h3>
 
                             {cart.length === 0 ? (
-                                <p className="py-8 text-center text-gray-500">
+                                <p className="py-8 text-center font-medium text-gray-500 dark:text-gray-400">
                                     Select items from the menu to start an order
                                 </p>
                             ) : (
@@ -651,13 +659,13 @@ export default function CreateOrder({
                                     {cart.map((item) => (
                                         <div
                                             key={item.menu_item_id}
-                                            className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700"
                                         >
                                             <div className="flex-1">
-                                                <p className="text-sm font-medium">
+                                                <p className="text-sm font-bold text-black dark:text-white">
                                                     {item.name}
                                                 </p>
-                                                <p className="font-semibold text-green-600">
+                                                <p className="font-bold text-red-600 dark:text-red-400">
                                                     {formatCurrency(item.price)}
                                                 </p>
                                             </div>
@@ -671,12 +679,12 @@ export default function CreateOrder({
                                                             item.quantity - 1,
                                                         )
                                                     }
-                                                    className="rounded p-1 text-red-600 hover:bg-red-100"
+                                                    className="rounded p-1 text-red-600 transition-colors hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30"
                                                 >
                                                     <Minus className="h-4 w-4" />
                                                 </button>
 
-                                                <span className="min-w-8 text-center font-medium">
+                                                <span className="min-w-8 text-center font-bold text-black dark:text-white">
                                                     {item.quantity}
                                                 </span>
 
@@ -688,7 +696,7 @@ export default function CreateOrder({
                                                             item.quantity + 1,
                                                         )
                                                     }
-                                                    className="rounded p-1 text-green-600 hover:bg-green-100"
+                                                    className="rounded p-1 text-green-600 transition-colors hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/30"
                                                 >
                                                     <Plus className="h-4 w-4" />
                                                 </button>
@@ -700,10 +708,12 @@ export default function CreateOrder({
 
                             {/* Total */}
                             {cart.length > 0 && (
-                                <div className="mt-4 border-t pt-4">
-                                    <div className="flex items-center justify-between text-lg font-bold">
-                                        <span>Total:</span>
-                                        <span className="text-green-600">
+                                <div className="mt-4 border-t-2 border-gray-300 pt-4 dark:border-gray-600">
+                                    <div className="flex items-center justify-between text-xl font-bold">
+                                        <span className="text-black dark:text-white">
+                                            Total:
+                                        </span>
+                                        <span className="text-red-600 dark:text-red-400">
                                             {formatCurrency(calculateTotal())}
                                         </span>
                                     </div>
@@ -715,12 +725,12 @@ export default function CreateOrder({
                         <button
                             type="submit"
                             disabled={cart.length === 0 || processing}
-                            className="w-full rounded-lg bg-blue-600 py-3 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-full rounded-lg bg-red-600 py-3 font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500 dark:hover:bg-red-600"
                         >
                             {processing ? 'Creating Order...' : 'Create Order'}
                         </button>
 
-                        <p className="text-center text-xs text-gray-500">
+                        <p className="text-center text-xs font-medium text-gray-500 dark:text-gray-400">
                             Payment will be processed after order creation
                         </p>
                     </form>

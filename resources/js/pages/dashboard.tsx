@@ -124,22 +124,26 @@ export default function Dashboard({
     const getOrderStatusColor = (status: string) => {
         switch (status) {
             case 'confirmed':
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-200 dark:border-green-700';
             case 'preparing':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700';
             case 'ready':
-                return 'bg-green-100 text-green-800';
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-700';
             case 'completed':
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600';
+            case 'cancelled':
+                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-700';
         }
     };
 
     const getOrderPriority = (timeElapsed: number) => {
-        if (timeElapsed > 15) return 'border-orange-200 bg-orange-50';
-        if (timeElapsed > 10) return 'border-yellow-200 bg-yellow-50';
-        return 'border-gray-200 bg-white';
+        if (timeElapsed > 15)
+            return 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-900/20';
+        if (timeElapsed > 10)
+            return 'border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/20';
+        return 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800';
     };
 
     const getCurrentShift = () => {
@@ -159,19 +163,19 @@ export default function Dashboard({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Operations Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl bg-gray-50 p-4 dark:bg-gray-900">
                 {/* Flash Messages */}
                 {pageProps.flash?.error && (
-                    <div className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4">
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-red-300 bg-red-100 p-4 shadow-sm dark:border-red-600 dark:bg-red-900/50">
                         <div className="flex items-center space-x-2">
-                            <AlertTriangle className="h-5 w-5 text-red-600" />
-                            <p className="text-red-800">
+                            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            <p className="font-medium text-red-800 dark:text-red-200">
                                 {pageProps.flash.error}
                             </p>
                         </div>
                         <button
                             onClick={() => window.location.reload()}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -179,16 +183,16 @@ export default function Dashboard({
                 )}
 
                 {pageProps.flash?.success && (
-                    <div className="mb-4 flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4">
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-green-300 bg-green-100 p-4 shadow-sm dark:border-green-600 dark:bg-green-900/50">
                         <div className="flex items-center space-x-2">
-                            <ShoppingCart className="h-5 w-5 text-green-600" />
-                            <p className="text-green-800">
+                            <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <p className="font-medium text-green-800 dark:text-green-200">
                                 {pageProps.flash.success}
                             </p>
                         </div>
                         <button
                             onClick={() => window.location.reload()}
-                            className="text-green-600 hover:text-green-800"
+                            className="text-green-600 transition-colors hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -198,10 +202,10 @@ export default function Dashboard({
                 {/* Header with Quick Actions */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
+                        <h1 className="text-3xl font-bold text-black dark:text-white">
                             {getGreeting()}, {user.name}
                         </h1>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 dark:text-gray-400">
                             {user.role} • {getCurrentShift()} • Kash Kitchen
                             Operations
                         </p>
@@ -209,14 +213,14 @@ export default function Dashboard({
                     <div className="flex space-x-3">
                         <Link
                             href="/pos/create"
-                            className="flex items-center space-x-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                            className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-medium text-white shadow-md transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                         >
                             <Plus className="h-4 w-4" />
                             <span>New Order</span>
                         </Link>
                         <Link
                             href="/sales-analytics"
-                            className="flex items-center space-x-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                            className="flex items-center space-x-2 rounded-lg border-2 border-black px-4 py-2 font-medium text-black shadow-md transition-all hover:bg-black hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-black"
                         >
                             <TrendingUp className="h-4 w-4" />
                             <span>Analytics</span>
@@ -226,12 +230,12 @@ export default function Dashboard({
 
                 {/* Critical Alerts Bar - Only Stock Related */}
                 {criticalAlerts.outOfStockCount > 0 && (
-                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                    <div className="mb-4 rounded-lg border-2 border-red-300 bg-red-50 p-4 shadow-md dark:border-red-600 dark:bg-red-900/30">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4">
-                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
                                 <div className="flex space-x-6 text-sm">
-                                    <span className="font-medium text-red-800">
+                                    <span className="font-bold text-red-800 dark:text-red-200">
                                         {criticalAlerts.outOfStockCount} items
                                         out of stock
                                     </span>
@@ -239,7 +243,7 @@ export default function Dashboard({
                             </div>
                             <Link
                                 href="/inventory/reports/low-stock"
-                                className="text-sm font-medium text-red-600 hover:text-red-800"
+                                className="text-sm font-bold text-red-700 transition-colors hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
                             >
                                 View Details →
                             </Link>
@@ -249,99 +253,93 @@ export default function Dashboard({
 
                 {/* Today's Operations Summary */}
                 <div className="grid gap-4 md:grid-cols-4">
-                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     Today's Sales
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {formatCurrency(todayStats.sales)}
                                 </p>
                             </div>
-                            <DollarSign className="h-6 w-6 text-green-600" />
+                            <DollarSign className="h-8 w-8 text-red-600 dark:text-red-500" />
                         </div>
-                        <div className="mt-2 flex space-x-4 text-xs text-gray-500">
+                        <div className="mt-3 flex space-x-4 text-xs text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-1">
                                 <Banknote className="h-3 w-3" />
-                                <span>
+                                <span className="font-medium">
                                     {formatCurrency(todayStats.cashTotal)}
                                 </span>
                             </div>
                             <div className="flex items-center space-x-1">
                                 <Smartphone className="h-3 w-3" />
-                                <span>
+                                <span className="font-medium">
                                     {formatCurrency(todayStats.mpesaTotal)}
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     Orders Today
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {todayStats.orders}
                                 </p>
                             </div>
-                            <ShoppingCart className="h-6 w-6 text-blue-600" />
+                            <ShoppingCart className="h-8 w-8 text-red-600 dark:text-red-500" />
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">
                             {criticalAlerts.pendingOrders} pending
                         </p>
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     Avg Order Time
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-black dark:text-white">
                                     {quickStats.averageOrderTime}m
                                 </p>
                             </div>
-                            <Clock className="h-6 w-6 text-purple-600" />
+                            <Clock className="h-8 w-8 text-red-600 dark:text-red-500" />
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">
                             Target: 8 minutes
                         </p>
                     </div>
 
                     <div
-                        className={`rounded-lg border p-4 ${
+                        className={`rounded-lg border-2 p-6 shadow-lg transition-shadow hover:shadow-xl ${
                             criticalAlerts.lowStockCount > 0
-                                ? 'border-orange-200 bg-orange-50'
-                                : 'border-gray-200 bg-white'
+                                ? 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/30'
+                                : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
                         }`}
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-600">
+                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
                                     Stock Alerts
                                 </p>
                                 <p
-                                    className={`text-2xl font-bold ${
+                                    className={`text-3xl font-bold ${
                                         criticalAlerts.lowStockCount > 0
-                                            ? 'text-orange-600'
-                                            : 'text-gray-900'
+                                            ? 'text-red-600 dark:text-red-400'
+                                            : 'text-black dark:text-white'
                                     }`}
                                 >
                                     {criticalAlerts.lowStockCount}
                                 </p>
                             </div>
-                            <Package
-                                className={`h-6 w-6 ${
-                                    criticalAlerts.lowStockCount > 0
-                                        ? 'text-orange-600'
-                                        : 'text-gray-600'
-                                }`}
-                            />
+                            <Package className="h-8 w-8 text-red-600 dark:text-red-500" />
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-3 text-xs font-medium text-gray-500 dark:text-gray-400">
                             {criticalAlerts.lowStockCount > 0
                                 ? 'Need attention'
                                 : 'All good'}
@@ -352,16 +350,16 @@ export default function Dashboard({
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Active Orders - Fast Food Context */}
                     <div className="lg:col-span-2">
-                        <div className="rounded-lg border border-gray-200 bg-white">
-                            <div className="border-b p-4">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="flex items-center text-lg font-semibold">
+                                    <h2 className="flex items-center text-lg font-bold text-white">
                                         <ChefHat className="mr-2 h-5 w-5" />
                                         Active Orders ({activeOrders.length})
                                     </h2>
                                     <Link
                                         href="/pos"
-                                        className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                                        className="text-sm font-bold text-red-400 transition-colors hover:text-red-300 dark:text-red-300 dark:hover:text-red-200"
                                     >
                                         View All →
                                     </Link>
@@ -373,35 +371,33 @@ export default function Dashboard({
                                         {activeOrders.map((order) => (
                                             <div
                                                 key={order.id}
-                                                className={`rounded-lg border p-3 ${getOrderPriority(order.time_elapsed)}`}
+                                                className={`rounded-lg border-2 p-4 shadow-md transition-shadow hover:shadow-lg ${getOrderPriority(order.time_elapsed)}`}
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center space-x-3">
                                                         <div>
                                                             <div className="flex items-center space-x-2">
-                                                                <span className="font-medium">
+                                                                <span className="font-bold text-black dark:text-white">
                                                                     #
                                                                     {
                                                                         order.order_number
                                                                     }
                                                                 </span>
                                                                 <span
-                                                                    className={`rounded-full px-2 py-1 text-xs font-medium ${getOrderStatusColor(order.order_status)}`}
+                                                                    className={`rounded-full px-3 py-1 text-xs font-bold ${getOrderStatusColor(order.order_status)}`}
                                                                 >
-                                                                    {
-                                                                        order.order_status
-                                                                    }
+                                                                    {order.order_status.toUpperCase()}
                                                                 </span>
                                                                 {order.time_elapsed >
                                                                     10 && (
-                                                                    <span className="text-xs font-medium text-orange-600">
+                                                                    <span className="text-xs font-bold text-red-600 dark:text-red-400">
                                                                         {formatTimeElapsed(
                                                                             order.time_elapsed,
                                                                         )}
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <p className="text-sm text-gray-600">
+                                                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                                                 {order.customer_name ||
                                                                     'Walk-in'}{' '}
                                                                 •{' '}
@@ -414,12 +410,12 @@ export default function Dashboard({
                                                     </div>
                                                     <div className="flex items-center space-x-3">
                                                         <div className="text-right">
-                                                            <p className="font-medium">
+                                                            <p className="font-bold text-black dark:text-white">
                                                                 {formatCurrency(
                                                                     order.total_amount,
                                                                 )}
                                                             </p>
-                                                            <p className="text-xs text-gray-500">
+                                                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                                                                 {formatTimeAgo(
                                                                     order.created_at,
                                                                 )}
@@ -427,9 +423,9 @@ export default function Dashboard({
                                                         </div>
                                                         <Link
                                                             href={`/pos/${order.id}`}
-                                                            className="text-blue-600 hover:text-blue-800"
+                                                            className="text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                                                         >
-                                                            <Eye className="h-4 w-4" />
+                                                            <Eye className="h-5 w-5" />
                                                         </Link>
                                                     </div>
                                                 </div>
@@ -437,9 +433,11 @@ export default function Dashboard({
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="py-8 text-center text-gray-500">
-                                        <ChefHat className="mx-auto mb-2 h-8 w-8 text-gray-400" />
-                                        <p>No active orders</p>
+                                    <div className="py-12 text-center text-gray-500 dark:text-gray-400">
+                                        <ChefHat className="mx-auto mb-3 h-12 w-12 text-gray-400 dark:text-gray-600" />
+                                        <p className="text-lg font-bold">
+                                            No active orders
+                                        </p>
                                         <p className="text-sm">
                                             All caught up!
                                         </p>
@@ -452,35 +450,35 @@ export default function Dashboard({
                     {/* Quick Actions & Status */}
                     <div className="space-y-6">
                         {/* Quick Actions */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
-                            <h3 className="mb-4 font-semibold">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h3 className="mb-4 font-bold text-black dark:text-white">
                                 Quick Actions
                             </h3>
                             <div className="space-y-3">
                                 <Link
                                     href="/pos/create"
-                                    className="flex items-center space-x-3 rounded-lg border border-blue-200 bg-blue-50 p-3 hover:bg-blue-100"
+                                    className="flex items-center space-x-3 rounded-lg border-2 border-red-200 bg-red-50 p-3 shadow-md transition-colors hover:bg-red-100 dark:border-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50"
                                 >
-                                    <Plus className="h-4 w-4 text-blue-600" />
-                                    <span className="text-sm font-medium text-blue-900">
+                                    <Plus className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                    <span className="text-sm font-bold text-red-900 dark:text-red-200">
                                         New Order
                                     </span>
                                 </Link>
                                 <Link
                                     href="/inventory"
-                                    className="flex items-center space-x-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
+                                    className="flex items-center space-x-3 rounded-lg border-2 border-gray-200 p-3 shadow-md transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
                                 >
-                                    <Package className="h-4 w-4 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-900">
+                                    <Package className="h-5 w-5 text-black dark:text-white" />
+                                    <span className="text-sm font-bold text-black dark:text-white">
                                         Check Inventory
                                     </span>
                                 </Link>
                                 <Link
                                     href="/inventory/reports/low-stock"
-                                    className="flex items-center space-x-3 rounded-lg border border-orange-200 bg-orange-50 p-3 hover:bg-orange-100"
+                                    className="flex items-center space-x-3 rounded-lg border-2 border-red-200 bg-red-50 p-3 shadow-md transition-colors hover:bg-red-100 dark:border-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50"
                                 >
-                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
-                                    <span className="text-sm font-medium text-orange-900">
+                                    <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                    <span className="text-sm font-bold text-red-900 dark:text-red-200">
                                         Stock Alerts
                                     </span>
                                 </Link>
@@ -488,44 +486,44 @@ export default function Dashboard({
                         </div>
 
                         {/* System Status */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
-                            <h3 className="mb-4 font-semibold">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h3 className="mb-4 font-bold text-black dark:text-white">
                                 System Status
                             </h3>
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         Inventory Value
                                     </span>
-                                    <span className="font-medium">
+                                    <span className="font-bold text-black dark:text-white">
                                         {formatCurrency(
                                             quickStats.inventoryValue,
                                         )}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         Staff on Duty
                                     </span>
-                                    <span className="font-medium">
+                                    <span className="font-bold text-black dark:text-white">
                                         {quickStats.staffOnDuty}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         Peak Hour Sales
                                     </span>
-                                    <span className="font-medium">
+                                    <span className="font-bold text-black dark:text-white">
                                         {formatCurrency(
                                             quickStats.peakHourSales,
                                         )}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         System Status
                                     </span>
-                                    <span className="font-medium text-green-600">
+                                    <span className="font-bold text-green-600 dark:text-green-400">
                                         Online
                                     </span>
                                 </div>
@@ -533,22 +531,22 @@ export default function Dashboard({
                         </div>
 
                         {/* Time & Date */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
+                        <div className="rounded-lg border-2 border-gray-200 bg-black p-6 shadow-lg dark:border-gray-600 dark:bg-gray-900">
                             <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900">
+                                <p className="text-3xl font-bold text-white">
                                     {new Date().toLocaleTimeString('en-KE', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                     })}
                                 </p>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm font-medium text-gray-300 dark:text-gray-400">
                                     {new Date().toLocaleDateString('en-KE', {
                                         weekday: 'long',
                                         month: 'long',
                                         day: 'numeric',
                                     })}
                                 </p>
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-2 text-xs font-bold tracking-wide text-red-400 uppercase dark:text-red-300">
                                     {getCurrentShift()}
                                 </p>
                             </div>
