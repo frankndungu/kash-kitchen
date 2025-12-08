@@ -127,4 +127,50 @@ class MenuItem extends Model
     {
         return $this->allergens ? implode(', ', $this->allergens) : 'None';
     }
+
+    /**
+     * Get the ingredients used by this menu item
+     */
+    public function ingredients(): HasMany
+    {
+        return $this->hasMany(MenuItemIngredient::class);
+    }
+
+    /**
+     * Deduct ingredients from inventory when this menu item is sold
+     */
+    public function deductFromInventory(int $quantity = 1): array
+    {
+        $deductions = [];
+        
+        foreach ($this->ingredients as $ingredient) {
+            $inventoryItem = $ingredient->inventoryItem;
+            $quantityToDeduct = $ingredient->quantity_used * $quantity;
+            
+            // Check if we have enough stock
+            if ($inventoryItem->current_stock >= $quantityToDeduct) {
+                // Deduct from inventory
+                $inventoryItem->decrement('current_stock', $quantityToDeduct);
+                
+                $deductions[] = [
+                    'inventory_item' => $inventoryItem->name,
+                    'quantity_deducted' => $quantityToDeduct,
+                    'unit' => $ingredient->unit,
+                    'remaining_stock' => $inventoryItem->fresh()->current_stock,
+                ];
+            } else {
+                // Log insufficient stock
+                $deductions[] = [
+                    'inventory_item' => $inventoryItem->name,
+                    'quantity_deducted' => 0,
+                    'unit' => $ingredient->unit,
+                    'error' => 'Insufficient stock',
+                    'required' => $quantityToDeduct,
+                    'available' => $inventoryItem->current_stock,
+                ];
+            }
+        }
+        
+        return $deductions;
+    }
 }

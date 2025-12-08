@@ -6,6 +6,7 @@ use App\Models\InventoryItem;
 use App\Models\InventoryCategory;
 use App\Models\Supplier;
 use App\Models\StockMovement;
+use App\Models\MenuItemIngredient;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,6 +37,12 @@ class InventoryController extends Controller
                 case 'in_stock':
                     $query->whereColumn('current_stock', '>', 'minimum_stock');
                     break;
+                case 'auto_deduct':
+                    // Filter items that have linked menu items - need to check if relationship exists first
+                    if (method_exists(InventoryItem::class, 'menuItemIngredients')) {
+                        $query->whereHas('menuItemIngredients');
+                    }
+                    break;
             }
         }
 
@@ -50,7 +57,23 @@ class InventoryController extends Controller
 
         $inventoryItems = $query->orderBy('name')->paginate(20);
 
+        // Add linked menu items count to each inventory item
+        $inventoryItems->getCollection()->transform(function ($item) {
+            // Check if the relationship method exists before using it
+            if (method_exists($item, 'menuItemIngredients')) {
+                $item->linked_menu_items = $item->menuItemIngredients()->count();
+            } else {
+                $item->linked_menu_items = 0;
+            }
+            return $item;
+        });
+
         // Get summary statistics
+        $autoDeductCount = 0;
+        if (method_exists(InventoryItem::class, 'menuItemIngredients')) {
+            $autoDeductCount = InventoryItem::whereHas('menuItemIngredients')->count();
+        }
+
         $stats = [
             'total_items' => InventoryItem::active()->count(),
             'low_stock_items' => InventoryItem::lowStock()->count(),
@@ -58,6 +81,7 @@ class InventoryController extends Controller
             'total_value' => InventoryItem::active()
                                         ->selectRaw('SUM(current_stock * unit_cost) as total')
                                         ->value('total') ?? 0,
+            'auto_deduct_items' => $autoDeductCount,
         ];
 
         // Get categories for filtering
@@ -148,6 +172,24 @@ class InventoryController extends Controller
         $user = $request->user();
         
         $inventoryItem->load(['category', 'supplier', 'creator']);
+        
+        // Get linked menu items with their usage quantities - with safety check
+        $linkedMenuItems = collect();
+        if (method_exists($inventoryItem, 'menuItemIngredients')) {
+            $linkedMenuItems = $inventoryItem->menuItemIngredients()
+                                            ->with('menuItem')
+                                            ->get()
+                                            ->map(function ($ingredient) {
+                                                return [
+                                                    'id' => $ingredient->menuItem->id,
+                                                    'name' => $ingredient->menuItem->name,
+                                                    'quantity_used' => $ingredient->quantity_used,
+                                                    'unit' => $ingredient->unit,
+                                                ];
+                                            });
+        }
+
+        $inventoryItem->linked_menu_items = $linkedMenuItems;
         
         // Get recent stock movements
         $stockMovements = $inventoryItem->stockMovements()

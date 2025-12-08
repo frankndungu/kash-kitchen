@@ -250,8 +250,11 @@ class POSController extends Controller
 
             \Log::info('Order created', ['order_id' => $order->id]);
 
+            // 🔥 AUTOMATIC INVENTORY DEDUCTION - NEW FEATURE!
+            $inventoryDeductions = [];
+
             foreach ($validatedData['items'] as $itemData) {
-                $menuItem = MenuItem::find($itemData['menu_item_id']);
+                $menuItem = MenuItem::with('ingredients.inventoryItem')->find($itemData['menu_item_id']);
                 
                 $orderItem = $order->items()->create([
                     'menu_item_id' => $menuItem->id,
@@ -261,6 +264,27 @@ class POSController extends Controller
                 ]);
 
                 \Log::info('Order item created', ['order_item_id' => $orderItem->id]);
+
+                // 🚀 AUTO-DEDUCT INVENTORY
+                if ($menuItem && $menuItem->ingredients->isNotEmpty()) {
+                    $deductionResult = $menuItem->deductFromInventory($itemData['quantity']);
+                    
+                    if (!empty($deductionResult)) {
+                        $inventoryDeductions[] = [
+                            'menu_item' => $menuItem->name,
+                            'quantity_ordered' => $itemData['quantity'],
+                            'deductions' => $deductionResult
+                        ];
+
+                        // Log the deduction
+                        \Log::info('🔥 AUTOMATIC INVENTORY DEDUCTION', [
+                            'order_number' => $order->order_number,
+                            'menu_item' => $menuItem->name,
+                            'quantity_sold' => $itemData['quantity'],
+                            'deductions' => $deductionResult
+                        ]);
+                    }
+                }
             }
 
             $order->calculateTotals();
@@ -272,9 +296,28 @@ class POSController extends Controller
 
             $order->update(['mpesa_reference' => $transactionId]);
 
+            // Create success message with inventory deduction info
+            $successMessage = "Order {$order->order_number} created successfully! Transaction ID: {$transactionId}";
+            
+            if (!empty($inventoryDeductions)) {
+                $deductionSummary = [];
+                foreach ($inventoryDeductions as $deduction) {
+                    foreach ($deduction['deductions'] as $item) {
+                        if (isset($item['quantity_deducted']) && $item['quantity_deducted'] > 0) {
+                            $deductionSummary[] = "{$item['inventory_item']}: -{$item['quantity_deducted']} {$item['unit']}";
+                        }
+                    }
+                }
+                
+                if (!empty($deductionSummary)) {
+                    $successMessage .= " | Inventory auto-deducted: " . implode(', ', $deductionSummary);
+                }
+            }
+
             return redirect()->route('pos.index')
-                           ->with('success', "Order {$order->order_number} created successfully! Transaction ID: {$transactionId}")
-                           ->with('order', $order->fresh()->load('items.menuItem'));
+                           ->with('success', $successMessage)
+                           ->with('order', $order->fresh()->load('items.menuItem'))
+                           ->with('inventory_deductions', $inventoryDeductions);
 
         } catch (\Exception $e) {
             \Log::error('Order creation failed', [
