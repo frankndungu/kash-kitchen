@@ -64,6 +64,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Reports
         Route::get('inventory/reports/low-stock', [InventoryController::class, 'lowStockReport'])->name('inventory.low-stock-report');
+
+        // AJAX Endpoints for dynamic data fetching
+        Route::post('/inventory/create-category', [InventoryController::class, 'createCategory'])->name('inventory.create-category');
+        Route::post('/inventory/create-supplier', [InventoryController::class, 'createSupplier'])->name('inventory.create-supplier');
+        Route::get('/inventory/suppliers', [InventoryController::class, 'getSuppliers'])->name('inventory.get-suppliers');
+        Route::get('/inventory/categories', [InventoryController::class, 'getCategories'])->name('inventory.get-categories');
+
+        // Delete inventory item
+        Route::delete('/inventory/{inventoryItem}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
     });
     
     // Future routes ready for expansion:

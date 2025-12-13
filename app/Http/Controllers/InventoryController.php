@@ -9,6 +9,8 @@ use App\Models\StockMovement;
 use App\Models\MenuItemIngredient;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use Inertia\Inertia;
 
 class InventoryController extends Controller
@@ -17,7 +19,7 @@ class InventoryController extends Controller
     {
         $user = $request->user();
         
-        // Get inventory items with filtering
+        // Get inventory items with enhanced data including stock movements
         $query = InventoryItem::with(['category', 'supplier'])
                               ->where('is_active', true);
 
@@ -26,10 +28,15 @@ class InventoryController extends Controller
             $query->where('category_id', $request->category);
         }
 
+        if ($request->filled('supplier')) {
+            $query->where('supplier_id', $request->supplier);
+        }
+
         if ($request->filled('status')) {
             switch ($request->status) {
                 case 'low_stock':
-                    $query->whereColumn('current_stock', '<=', 'minimum_stock');
+                    $query->whereColumn('current_stock', '<=', 'minimum_stock')
+                          ->where('current_stock', '>', 0);
                     break;
                 case 'out_of_stock':
                     $query->where('current_stock', '<=', 0);
@@ -38,8 +45,8 @@ class InventoryController extends Controller
                     $query->whereColumn('current_stock', '>', 'minimum_stock');
                     break;
                 case 'auto_deduct':
-                    // Filter items that have linked menu items - need to check if relationship exists first
-                    if (method_exists(InventoryItem::class, 'menuItemIngredients')) {
+                    // Filter items that have linked menu items
+                    if (class_exists(MenuItemIngredient::class)) {
                         $query->whereHas('menuItemIngredients');
                     }
                     break;
@@ -57,50 +64,251 @@ class InventoryController extends Controller
 
         $inventoryItems = $query->orderBy('name')->paginate(20);
 
+        // Calculate stock movement data for CSV export format
+        $this->addStockMovementData($inventoryItems);
+
         // Add linked menu items count to each inventory item
+        $this->addLinkedMenuItemsCount($inventoryItems);
+
+        // Get comprehensive statistics
+        $stats = $this->calculateComprehensiveStats();
+
+        // Get top suppliers by value
+        $topSuppliers = $this->getTopSuppliers();
+
+        // Get low stock items for alerts
+        $lowStockItems = $this->getLowStockItems();
+
+        // Get all categories and suppliers for filters
+        $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
+        $suppliers = $this->getSuppliersWithCounts();
+
+        return Inertia::render('inventory/index', [
+            'user' => ['name' => $user->name, 'email' => $user->email],
+            'inventoryItems' => $inventoryItems,
+            'categories' => $categories,
+            'suppliers' => $suppliers,
+            'stats' => $stats,
+            'topSuppliers' => $topSuppliers,
+            'lowStockItems' => $lowStockItems,
+            'filters' => $request->only(['category', 'status', 'search', 'supplier']),
+        ]);
+    }
+
+    /**
+     * Add stock movement data for CSV export format
+     * Calculates Opening Stock, Received, Used/Sold for current period
+     */
+    private function addStockMovementData($inventoryItems)
+    {
+        // Define period for calculations (current month)
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+
+        $inventoryItems->getCollection()->transform(function ($item) use ($startOfMonth, $endOfMonth) {
+            // Calculate opening stock (stock at beginning of month)
+            $openingStock = $this->calculateOpeningStock($item->id, $startOfMonth);
+            
+            // Calculate received stock (stock in movements this month)
+            $stockReceived = $this->calculateStockReceived($item->id, $startOfMonth, $endOfMonth);
+            
+            // Calculate used/sold stock (stock out movements this month)
+            $stockUsed = $this->calculateStockUsed($item->id, $startOfMonth, $endOfMonth);
+
+            $item->opening_stock = $openingStock;
+            $item->stock_received = $stockReceived;
+            $item->stock_used = $stockUsed;
+
+            return $item;
+        });
+    }
+
+    /**
+     * Calculate opening stock for an item at the beginning of period
+     */
+    private function calculateOpeningStock($itemId, $startDate)
+    {
+        // Get the last stock movement before the start date
+        $lastMovement = StockMovement::where('inventory_item_id', $itemId)
+                                   ->where('movement_date', '<', $startDate)
+                                   ->orderBy('movement_date', 'desc')
+                                   ->orderBy('id', 'desc')
+                                   ->first();
+
+        return $lastMovement ? $lastMovement->new_stock : 0;
+    }
+
+    /**
+     * Calculate stock received (incoming) for an item in period
+     */
+    private function calculateStockReceived($itemId, $startDate, $endDate)
+    {
+        return StockMovement::where('inventory_item_id', $itemId)
+                          ->where('movement_type', 'in')
+                          ->whereBetween('movement_date', [$startDate, $endDate])
+                          ->sum('quantity');
+    }
+
+    /**
+     * Calculate stock used/sold (outgoing) for an item in period
+     */
+    private function calculateStockUsed($itemId, $startDate, $endDate)
+    {
+        return StockMovement::where('inventory_item_id', $itemId)
+                          ->where('movement_type', 'out')
+                          ->whereBetween('movement_date', [$startDate, $endDate])
+                          ->sum('quantity');
+    }
+
+    /**
+     * Add linked menu items count to inventory items
+     */
+    private function addLinkedMenuItemsCount($inventoryItems)
+    {
         $inventoryItems->getCollection()->transform(function ($item) {
-            // Check if the relationship method exists before using it
-            if (method_exists($item, 'menuItemIngredients')) {
+            // Check if MenuItemIngredient model exists and has the relationship
+            if (class_exists(MenuItemIngredient::class) && method_exists($item, 'menuItemIngredients')) {
                 $item->linked_menu_items = $item->menuItemIngredients()->count();
             } else {
                 $item->linked_menu_items = 0;
             }
             return $item;
         });
-
-        // Get summary statistics
-        $autoDeductCount = 0;
-        if (method_exists(InventoryItem::class, 'menuItemIngredients')) {
-            $autoDeductCount = InventoryItem::whereHas('menuItemIngredients')->count();
-        }
-
-        $stats = [
-            'total_items' => InventoryItem::active()->count(),
-            'low_stock_items' => InventoryItem::lowStock()->count(),
-            'out_of_stock_items' => InventoryItem::outOfStock()->count(),
-            'total_value' => InventoryItem::active()
-                                        ->selectRaw('SUM(current_stock * unit_cost) as total')
-                                        ->value('total') ?? 0,
-            'auto_deduct_items' => $autoDeductCount,
-        ];
-
-        // Get categories for filtering
-        $categories = InventoryCategory::active()->ordered()->get();
-
-        return Inertia::render('inventory/index', [
-            'user' => ['name' => $user->name, 'email' => $user->email],
-            'inventoryItems' => $inventoryItems,
-            'categories' => $categories,
-            'stats' => $stats,
-            'filters' => $request->only(['category', 'status', 'search']),
-        ]);
     }
+
+    /**
+     * Calculate comprehensive statistics for dashboard
+     */
+    private function calculateComprehensiveStats()
+    {
+        $totalItems = InventoryItem::where('is_active', true)->count();
+        $lowStockItems = InventoryItem::where('is_active', true)
+                                    ->whereColumn('current_stock', '<=', 'minimum_stock')
+                                    ->where('current_stock', '>', 0)
+                                    ->count();
+        $outOfStockItems = InventoryItem::where('is_active', true)
+                                       ->where('current_stock', '<=', 0)
+                                       ->count();
+        
+        // Calculate auto deduct items count
+        $autoDeductItems = 0;
+        if (class_exists(MenuItemIngredient::class)) {
+            $autoDeductItems = InventoryItem::where('is_active', true)
+                                           ->whereHas('menuItemIngredients')
+                                           ->count();
+        }
+        
+        // Calculate total inventory value
+        $totalValue = InventoryItem::where('is_active', true)
+                                  ->selectRaw('SUM(current_stock * unit_cost) as total')
+                                  ->value('total') ?? 0;
+
+        // Calculate average stock level percentage
+        $avgStockLevel = InventoryItem::where('is_active', true)
+                                    ->where('maximum_stock', '>', 0)
+                                    ->selectRaw('AVG((current_stock / maximum_stock) * 100) as avg')
+                                    ->value('avg') ?? 0;
+
+        $totalSuppliers = Supplier::where('is_active', true)->count();
+
+        return [
+            'total_items' => $totalItems,
+            'low_stock_items' => $lowStockItems,
+            'out_of_stock_items' => $outOfStockItems,
+            'total_value' => $totalValue,
+            'auto_deduct_items' => $autoDeductItems,
+            'avg_stock_level' => $avgStockLevel,
+            'total_suppliers' => $totalSuppliers,
+        ];
+    }
+
+    /**
+     * Get top suppliers by total inventory value
+     */
+    private function getTopSuppliers()
+    {
+        return Supplier::where('is_active', true)
+            ->with(['inventoryItems' => function ($query) {
+                $query->where('is_active', true);
+            }])
+            ->get()
+            ->map(function ($supplier) {
+                $totalValue = $supplier->inventoryItems->sum(function ($item) {
+                    return $item->current_stock * $item->unit_cost;
+                });
+
+                return [
+                    'name' => $supplier->name,
+                    'items_count' => $supplier->inventoryItems->count(),
+                    'total_value' => $totalValue,
+                ];
+            })
+            ->sortByDesc('total_value')
+            ->take(10) // Show more suppliers including those with no items
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Get suppliers with item counts for filters
+     */
+    private function getSuppliersWithCounts()
+    {
+        return Supplier::where('is_active', true)
+            ->withCount(['inventoryItems' => function ($query) {
+                $query->where('is_active', true);
+            }])
+            ->orderBy('name')
+            ->get()
+            ->filter(function ($supplier) {
+                return $supplier->inventory_items_count > 0; // Filter in PHP instead of SQL
+            })
+            ->map(function ($supplier) {
+                return [
+                    'id' => $supplier->id,
+                    'name' => $supplier->name,
+                    'items_count' => $supplier->inventory_items_count,
+                ];
+            });
+    }
+
+    /**
+     * Get low stock items for alerts with estimated days until stockout
+     */
+    private function getLowStockItems()
+    {
+        return InventoryItem::where('is_active', true)
+            ->whereColumn('current_stock', '<=', 'minimum_stock')
+            ->where('current_stock', '>', 0)
+            ->orderByRaw('(current_stock / minimum_stock) ASC')
+            ->take(10)
+            ->get()
+            ->map(function ($item) {
+                // Calculate estimated days until stockout
+                $stockRatio = $item->minimum_stock > 0 ? $item->current_stock / $item->minimum_stock : 0;
+                
+                // Simple estimation: if we're at 50% of minimum stock, assume 7 days
+                // This is a basic calculation - could be enhanced with actual consumption data
+                $daysUntilStockout = max(1, round($stockRatio * 14));
+
+                return [
+                    'name' => $item->name,
+                    'current_stock' => $item->current_stock,
+                    'minimum_stock' => $item->minimum_stock,
+                    'unit_of_measure' => $item->unit_of_measure,
+                    'days_until_stockout' => $daysUntilStockout,
+                ];
+            })
+            ->toArray();
+    }
+
+    // ... (rest of the controller methods remain the same as in the original)
 
     public function create(Request $request)
     {
         $user = $request->user();
         
-        $categories = InventoryCategory::active()->ordered()->get();
+        $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('inventory/create', [
@@ -133,11 +341,13 @@ class InventoryController extends Controller
                 ...$validatedData,
                 'created_by' => $request->user()->id,
                 'is_active' => true,
+                'last_restocked' => $validatedData['current_stock'] > 0 ? now() : null,
             ]);
 
             // Create initial stock movement if current_stock > 0
             if ($validatedData['current_stock'] > 0) {
-                $inventoryItem->stockMovements()->create([
+                StockMovement::create([
+                    'inventory_item_id' => $inventoryItem->id,
                     'movement_type' => 'in',
                     'quantity' => $validatedData['current_stock'],
                     'unit_cost' => $validatedData['unit_cost'],
@@ -152,8 +362,16 @@ class InventoryController extends Controller
                 ]);
             }
 
+            // Automatic ingredient mapping creation (if needed)
+            $linkedCount = $this->createAutomaticIngredientMappings($inventoryItem);
+
+            $message = "Inventory item '{$inventoryItem->name}' created successfully!";
+            if ($linkedCount > 0) {
+                $message .= " Auto-linked to {$linkedCount} menu items for automatic deduction.";
+            }
+
             return redirect()->route('inventory.index')
-                           ->with('success', "Inventory item '{$inventoryItem->name}' created successfully!");
+                           ->with('success', $message);
 
         } catch (\Exception $e) {
             \Log::error('Inventory item creation failed', [
@@ -167,15 +385,103 @@ class InventoryController extends Controller
         }
     }
 
+    /**
+     * Automatically create ingredient mappings for new inventory items
+     */
+    private function createAutomaticIngredientMappings(InventoryItem $inventoryItem)
+    {
+        // Check if MenuItemIngredient model exists
+        if (!class_exists(MenuItemIngredient::class)) {
+            return 0;
+        }
+
+        $itemName = strtolower($inventoryItem->name);
+        $linkedCount = 0;
+        
+        // Define ingredient mappings based on item name patterns
+        $ingredientMappings = $this->getIngredientMappingsForItem($itemName);
+        
+        foreach ($ingredientMappings as $menuItemName => $quantity) {
+            // Find the menu item
+            $menuItem = \App\Models\MenuItem::where('name', $menuItemName)->first();
+            
+            if ($menuItem) {
+                // Check if mapping already exists
+                $existingMapping = MenuItemIngredient::where([
+                    'menu_item_id' => $menuItem->id,
+                    'inventory_item_id' => $inventoryItem->id,
+                ])->first();
+                
+                if (!$existingMapping) {
+                    // Create the ingredient mapping
+                    MenuItemIngredient::create([
+                        'menu_item_id' => $menuItem->id,
+                        'inventory_item_id' => $inventoryItem->id,
+                        'quantity_used' => $quantity['amount'],
+                        'unit' => $quantity['unit'],
+                    ]);
+                    
+                    $linkedCount++;
+                    \Log::info("Auto-linked {$inventoryItem->name} to {$menuItemName}");
+                }
+            }
+        }
+        
+        return $linkedCount;
+    }
+
+    /**
+     * Get ingredient mappings for a given inventory item name
+     */
+    private function getIngredientMappingsForItem(string $itemName)
+    {
+        $mappings = [];
+        
+        // Chicken mappings
+        if (str_contains($itemName, 'chicken')) {
+            $mappings = [
+                '1/4 Chicken' => ['amount' => 1.0, 'unit' => 'pcs'],
+                '1/2 Chicken' => ['amount' => 2.0, 'unit' => 'pcs'],
+                'Full Chicken' => ['amount' => 4.0, 'unit' => 'pcs'],
+                '1/4 Chicken + Chips Plain' => ['amount' => 1.0, 'unit' => 'pcs'],
+                '1/4 Chicken + Garlic Chips' => ['amount' => 1.0, 'unit' => 'pcs'],
+                '1/4 Chicken + Sauteed Chips' => ['amount' => 1.0, 'unit' => 'pcs'],
+                '1/4 Chicken + Chips Masala' => ['amount' => 1.0, 'unit' => 'pcs'],
+                '1/4 Chicken + Bhajia' => ['amount' => 1.0, 'unit' => 'pcs'],
+                'Bhajia + 1/4 Chicken' => ['amount' => 1.0, 'unit' => 'pcs'],
+            ];
+        }
+        
+        // Potato mappings
+        if (str_contains($itemName, 'potato')) {
+            $mappings = [
+                'Chips Plain' => ['amount' => 0.5, 'unit' => 'kg'],
+                'Garlic Chips' => ['amount' => 0.5, 'unit' => 'kg'],
+                'Chips Masala' => ['amount' => 0.5, 'unit' => 'kg'],
+                'Sauteed Chips' => ['amount' => 0.5, 'unit' => 'kg'],
+                'Bhajia' => ['amount' => 0.4, 'unit' => 'kg'],
+                '1/4 Chicken + Chips Plain' => ['amount' => 0.4, 'unit' => 'kg'],
+                '1/4 Chicken + Garlic Chips' => ['amount' => 0.4, 'unit' => 'kg'],
+                '1/4 Chicken + Chips Masala' => ['amount' => 0.4, 'unit' => 'kg'],
+                '1/4 Chicken + Sauteed Chips' => ['amount' => 0.4, 'unit' => 'kg'],
+                '1/4 Chicken + Bhajia' => ['amount' => 0.3, 'unit' => 'kg'],
+            ];
+        }
+        
+        // Add more mappings as needed...
+        
+        return $mappings;
+    }
+
     public function show(Request $request, InventoryItem $inventoryItem)
     {
         $user = $request->user();
         
         $inventoryItem->load(['category', 'supplier', 'creator']);
         
-        // Get linked menu items with their usage quantities - with safety check
+        // Get linked menu items with their usage quantities
         $linkedMenuItems = collect();
-        if (method_exists($inventoryItem, 'menuItemIngredients')) {
+        if (class_exists(MenuItemIngredient::class) && method_exists($inventoryItem, 'menuItemIngredients')) {
             $linkedMenuItems = $inventoryItem->menuItemIngredients()
                                             ->with('menuItem')
                                             ->get()
@@ -192,17 +498,26 @@ class InventoryController extends Controller
         $inventoryItem->linked_menu_items = $linkedMenuItems;
         
         // Get recent stock movements
-        $stockMovements = $inventoryItem->stockMovements()
-                                       ->with(['supplier', 'creator'])
-                                       ->latest('movement_date')
-                                       ->paginate(20);
+        $stockMovements = StockMovement::where('inventory_item_id', $inventoryItem->id)
+                                     ->with(['supplier', 'creator'])
+                                     ->latest('movement_date')
+                                     ->paginate(20);
 
         // Get stock movement statistics
         $movementStats = [
-            'total_movements' => $inventoryItem->stockMovements()->count(),
-            'total_stock_in' => $inventoryItem->stockMovements()->incoming()->sum('quantity'),
-            'total_stock_out' => $inventoryItem->stockMovements()->outgoing()->sum('quantity'),
-            'this_month_movements' => $inventoryItem->stockMovements()->thisMonth()->count(),
+            'total_movements' => StockMovement::where('inventory_item_id', $inventoryItem->id)->count(),
+            'total_stock_in' => StockMovement::where('inventory_item_id', $inventoryItem->id)
+                                           ->where('movement_type', 'in')
+                                           ->sum('quantity'),
+            'total_stock_out' => StockMovement::where('inventory_item_id', $inventoryItem->id)
+                                            ->where('movement_type', 'out')
+                                            ->sum('quantity'),
+            'this_month_movements' => StockMovement::where('inventory_item_id', $inventoryItem->id)
+                                                 ->whereBetween('movement_date', [
+                                                     Carbon::now()->startOfMonth(),
+                                                     Carbon::now()->endOfMonth()
+                                                 ])
+                                                 ->count(),
         ];
 
         return Inertia::render('inventory/show', [
@@ -217,7 +532,7 @@ class InventoryController extends Controller
     {
         $user = $request->user();
         
-        $categories = InventoryCategory::active()->ordered()->get();
+        $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('inventory/edit', [
@@ -269,7 +584,6 @@ class InventoryController extends Controller
 
     /**
      * Add stock to inventory (Stock In)
-     * For purchases, deliveries, or receiving new inventory
      */
     public function addStock(Request $request, InventoryItem $inventoryItem)
     {
@@ -283,20 +597,33 @@ class InventoryController extends Controller
         ]);
 
         try {
-            $stockMovement = $inventoryItem->addStock(
-                $validatedData['quantity'],
-                [
-                    'unit_cost' => $validatedData['unit_cost'],
-                    'supplier_id' => $validatedData['supplier_id'] ?? null,
-                    'batch_number' => $validatedData['batch_number'] ?? null,
-                    'expiry_date' => $validatedData['expiry_date'] ?? null,
-                    'notes' => $validatedData['notes'] ?? null,
-                    'reason' => 'purchase',
-                    'created_by' => $request->user()->id,
-                ]
-            );
+            $previousStock = $inventoryItem->current_stock;
+            $newStock = $previousStock + $validatedData['quantity'];
 
-            $newStock = $inventoryItem->fresh()->current_stock;
+            // Create stock movement record
+            StockMovement::create([
+                'inventory_item_id' => $inventoryItem->id,
+                'movement_type' => 'in',
+                'quantity' => $validatedData['quantity'],
+                'unit_cost' => $validatedData['unit_cost'],
+                'total_cost' => $validatedData['quantity'] * $validatedData['unit_cost'],
+                'previous_stock' => $previousStock,
+                'new_stock' => $newStock,
+                'reason' => 'purchase',
+                'notes' => $validatedData['notes'] ?? null,
+                'supplier_id' => $validatedData['supplier_id'] ?? null,
+                'batch_number' => $validatedData['batch_number'] ?? null,
+                'expiry_date' => $validatedData['expiry_date'] ?? null,
+                'created_by' => $request->user()->id,
+                'movement_date' => now(),
+            ]);
+
+            // Update inventory item
+            $inventoryItem->update([
+                'current_stock' => $newStock,
+                'last_restocked' => now(),
+                'updated_by' => $request->user()->id,
+            ]);
 
             return redirect()->back()
                            ->with('success', "Added {$validatedData['quantity']} {$inventoryItem->unit_of_measure} to '{$inventoryItem->name}'. New stock: {$newStock} {$inventoryItem->unit_of_measure}");
@@ -315,7 +642,6 @@ class InventoryController extends Controller
 
     /**
      * Use/Remove stock from inventory (Stock Out)
-     * For daily consumption, cooking, waste, or general usage
      */
     public function useStock(Request $request, InventoryItem $inventoryItem)
     {
@@ -332,19 +658,32 @@ class InventoryController extends Controller
         }
 
         try {
-            $stockMovement = $inventoryItem->removeStock(
-                $validatedData['quantity'],
-                [
-                    'reason' => $validatedData['reason'],
-                    'notes' => $validatedData['notes'] ?? null,
-                    'created_by' => $request->user()->id,
-                ]
-            );
+            $previousStock = $inventoryItem->current_stock;
+            $newStock = $previousStock - $validatedData['quantity'];
 
-            $remainingStock = $inventoryItem->fresh()->current_stock;
+            // Create stock movement record
+            StockMovement::create([
+                'inventory_item_id' => $inventoryItem->id,
+                'movement_type' => 'out',
+                'quantity' => $validatedData['quantity'],
+                'unit_cost' => $inventoryItem->unit_cost,
+                'total_cost' => $validatedData['quantity'] * $inventoryItem->unit_cost,
+                'previous_stock' => $previousStock,
+                'new_stock' => $newStock,
+                'reason' => $validatedData['reason'],
+                'notes' => $validatedData['notes'] ?? null,
+                'created_by' => $request->user()->id,
+                'movement_date' => now(),
+            ]);
+
+            // Update inventory item
+            $inventoryItem->update([
+                'current_stock' => $newStock,
+                'updated_by' => $request->user()->id,
+            ]);
 
             return redirect()->back()
-                           ->with('success', "Used {$validatedData['quantity']} {$inventoryItem->unit_of_measure} of '{$inventoryItem->name}'. Remaining: {$remainingStock} {$inventoryItem->unit_of_measure}");
+                           ->with('success', "Used {$validatedData['quantity']} {$inventoryItem->unit_of_measure} of '{$inventoryItem->name}'. Remaining: {$newStock} {$inventoryItem->unit_of_measure}");
 
         } catch (\Exception $e) {
             \Log::error('Use stock failed', [
@@ -362,7 +701,8 @@ class InventoryController extends Controller
     {
         $user = $request->user();
         
-        $lowStockItems = InventoryItem::lowStock()
+        $lowStockItems = InventoryItem::where('is_active', true)
+                                    ->whereColumn('current_stock', '<=', 'minimum_stock')
                                     ->with(['category', 'supplier'])
                                     ->orderBy('current_stock', 'asc')
                                     ->get();
@@ -371,5 +711,94 @@ class InventoryController extends Controller
             'user' => ['name' => $user->name, 'email' => $user->email],
             'lowStockItems' => $lowStockItems,
         ]);
+    }
+
+    /**
+     * Get suppliers with item counts for filters
+     */
+    public function getSuppliers(Request $request)
+    {
+        $suppliers = Supplier::where('is_active', true)
+            ->withCount(['inventoryItems' => function ($query) {
+                $query->where('is_active', true);
+            }])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($supplier) {
+                return [
+                    'id' => $supplier->id,
+                    'name' => $supplier->name,
+                    'items_count' => $supplier->inventory_items_count,
+                ];
+            });
+
+        return response()->json($suppliers);
+    }
+
+    /**
+     * Get categories for filters
+     */
+    public function getCategories(Request $request)
+    {
+        $categories = InventoryCategory::where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'color' => $category->color,
+                ];
+            });
+
+        return response()->json($categories);
+    }
+
+    /**
+     * Delete an inventory item and all its associated data
+     */
+    public function destroy(Request $request, InventoryItem $inventoryItem)
+    {
+        try {
+            // Check if item has any stock movements (for safety)
+            $movementCount = StockMovement::where('inventory_item_id', $inventoryItem->id)->count();
+            
+            // Check if item is linked to menu items (auto-deduction)
+            $linkedMenuItems = 0;
+            if (class_exists(MenuItemIngredient::class) && method_exists($inventoryItem, 'menuItemIngredients')) {
+                $linkedMenuItems = $inventoryItem->menuItemIngredients()->count();
+                // Delete the menu item links
+                $inventoryItem->menuItemIngredients()->delete();
+            }
+
+            // Store item name for success message
+            $itemName = $inventoryItem->name;
+
+            // Delete all stock movements
+            StockMovement::where('inventory_item_id', $inventoryItem->id)->delete();
+            
+            // Delete the inventory item itself
+            $inventoryItem->delete();
+
+            $message = "Inventory item '{$itemName}' deleted successfully!";
+            if ($movementCount > 0) {
+                $message .= " ({$movementCount} stock movements removed)";
+            }
+            if ($linkedMenuItems > 0) {
+                $message .= " ({$linkedMenuItems} menu item links removed)";
+            }
+
+            return redirect()->route('inventory.index')
+                           ->with('success', $message);
+
+        } catch (\Exception $e) {
+            \Log::error('Inventory item deletion failed', [
+                'inventory_item_id' => $inventoryItem->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                           ->withErrors(['error' => 'Failed to delete inventory item: ' . $e->getMessage()]);
+        }
     }
 }
