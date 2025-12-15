@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { Info, Package, Plus, Save, X, Zap } from 'lucide-react';
+import { Edit3, Info, Package, Plus, Save, Trash2, X, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -21,12 +21,27 @@ interface Category {
     color: string;
 }
 
+interface MenuItem {
+    id: number;
+    name: string;
+    category_id: number | null;
+}
+
+interface IngredientMapping {
+    menu_item_id: number;
+    menu_item_name: string;
+    quantity_used: number;
+    unit: string;
+    suggested?: boolean;
+}
+
 interface CreateProps {
     user: {
         name: string;
         email: string;
     };
     categories: Category[];
+    menuItems: MenuItem[];
     newCategory?: {
         id: number;
         name: string;
@@ -34,7 +49,12 @@ interface CreateProps {
     };
 }
 
-export default function Create({ user, categories, newCategory }: CreateProps) {
+export default function Create({
+    user,
+    categories,
+    menuItems,
+    newCategory,
+}: CreateProps) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         sku: '',
@@ -48,6 +68,7 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
         selling_price: '',
         track_stock: true,
         storage_requirements: [],
+        ingredient_mappings: [] as IngredientMapping[],
     });
 
     // Category creation form
@@ -67,6 +88,13 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
     // State for modals and dynamic data
     const [categoriesList, setCategoriesList] = useState(categories);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [suggestedMappings, setSuggestedMappings] = useState<
+        IngredientMapping[]
+    >([]);
+    const [showMappingsModal, setShowMappingsModal] = useState(false);
+    const [customMappings, setCustomMappings] = useState<IngredientMapping[]>(
+        [],
+    );
 
     // Handle new category from backend
     useEffect(() => {
@@ -78,8 +106,49 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
         }
     }, [newCategory]);
 
+    // Fetch suggested mappings when item name changes
+    useEffect(() => {
+        if (data.name && data.name.length > 2) {
+            fetchSuggestedMappings(data.name);
+        } else {
+            setSuggestedMappings([]);
+        }
+    }, [data.name]);
+
+    const fetchSuggestedMappings = async (itemName: string) => {
+        try {
+            const response = await fetch('/inventory/suggested-mappings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ item_name: itemName }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                setSuggestedMappings(result.suggestions || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch suggested mappings:', error);
+            setSuggestedMappings([]);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // Include both suggested mappings (modified) and custom mappings
+        const allMappings = [
+            ...customMappings,
+            ...suggestedMappings.filter(
+                (m) => !m.suggested || m.quantity_used > 0,
+            ),
+        ];
+        setData('ingredient_mappings', allMappings);
         post('/inventory');
     };
 
@@ -94,6 +163,46 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                 console.error('Category creation failed:', errors);
             },
         });
+    };
+
+    const addCustomMapping = () => {
+        setCustomMappings([
+            ...customMappings,
+            {
+                menu_item_id: 0,
+                menu_item_name: '',
+                quantity_used: 0,
+                unit: data.unit_of_measure,
+            },
+        ]);
+    };
+
+    const updateCustomMapping = (
+        index: number,
+        field: keyof IngredientMapping,
+        value: string | number,
+    ) => {
+        const updated = [...customMappings];
+        if (field === 'menu_item_id') {
+            const menuItem = menuItems.find(
+                (item) => item.id === Number(value),
+            );
+            updated[index].menu_item_id = Number(value);
+            updated[index].menu_item_name = menuItem?.name || '';
+        } else {
+            (updated[index] as any)[field] = value;
+        }
+        setCustomMappings(updated);
+    };
+
+    const removeCustomMapping = (index: number) => {
+        setCustomMappings(customMappings.filter((_, i) => i !== index));
+    };
+
+    const updateSuggestedMapping = (index: number, quantity: number) => {
+        const updated = [...suggestedMappings];
+        updated[index].quantity_used = quantity;
+        setSuggestedMappings(updated);
     };
 
     const colorOptions = [
@@ -151,64 +260,6 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                 color: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300',
             };
         }
-        if (name.includes('oil') || name.includes('cooking oil')) {
-            return {
-                willAutoDeduct: true,
-                description:
-                    'Will auto-deduct for fried items: All chicken, chips, wings, bhajia, and fried foods',
-                estimatedLinks: '25+ menu items',
-                color: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300',
-            };
-        }
-        if (
-            name.includes('spice') ||
-            name.includes('salt') ||
-            name.includes('pepper')
-        ) {
-            return {
-                willAutoDeduct: true,
-                description:
-                    'Will auto-deduct for seasoned dishes: Chicken, wings, masala chips, eggs, and seasoned foods',
-                estimatedLinks: '10+ menu items',
-                color: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300',
-            };
-        }
-        if (
-            name.includes('beef') ||
-            name.includes('minced') ||
-            name.includes('meat')
-        ) {
-            return {
-                willAutoDeduct: true,
-                description:
-                    'Will auto-deduct for meat dishes: Burgers, samosas, and meat-based items',
-                estimatedLinks: '5+ menu items',
-                color: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300',
-            };
-        }
-        if (name.includes('egg')) {
-            return {
-                willAutoDeduct: true,
-                description:
-                    'Will auto-deduct for egg dishes: Boiled Eggs, Fried Eggs, Special Eggs',
-                estimatedLinks: '3 menu items',
-                color: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300',
-            };
-        }
-        if (
-            name.includes('milk') ||
-            name.includes('soda') ||
-            name.includes('tea') ||
-            name.includes('coffee')
-        ) {
-            return {
-                willAutoDeduct: true,
-                description:
-                    'Will auto-deduct for beverages: Tea, coffee, smoothies, milkshakes, or sodas as applicable',
-                estimatedLinks: '3-5 menu items',
-                color: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-700 dark:text-blue-300',
-            };
-        }
         if (
             name.includes('flour') ||
             name.includes('bread') ||
@@ -233,6 +284,9 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
     };
 
     const autoDeductInfo = getAutoDeductionInfo(data.name);
+    const totalMappings =
+        suggestedMappings.filter((m) => m.quantity_used > 0).length +
+        customMappings.length;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -248,6 +302,7 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                         </h1>
                         <p className="font-medium text-gray-600 dark:text-gray-400">
                             Add a new item to your restaurant's inventory system
+                            with custom deduction quantities
                         </p>
                     </div>
                 </div>
@@ -273,7 +328,7 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                                 setData('name', e.target.value)
                                             }
                                             className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                            placeholder="e.g., Chicken Breast, Potatoes, Cooking Oil"
+                                            placeholder="e.g., Andazi Flour, Fresh Chicken, Potatoes"
                                             required
                                         />
                                         {errors.name && (
@@ -376,6 +431,248 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                 </div>
                             </div>
 
+                            {/* Ingredient Mappings Section */}
+                            {(suggestedMappings.length > 0 ||
+                                customMappings.length > 0) && (
+                                <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6 shadow-lg dark:border-blue-700 dark:bg-blue-900/20">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <h2 className="text-lg font-bold text-blue-900 dark:text-blue-200">
+                                            <Zap className="mr-2 inline h-5 w-5" />
+                                            Ingredient Mappings ({totalMappings}{' '}
+                                            detected)
+                                        </h2>
+                                        <button
+                                            type="button"
+                                            onClick={addCustomMapping}
+                                            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                                        >
+                                            <Plus className="mr-1 inline h-4 w-4" />
+                                            Add Manual Link
+                                        </button>
+                                    </div>
+
+                                    <p className="mb-4 text-sm font-medium text-blue-800 dark:text-blue-300">
+                                        Admin can edit these quantities! System
+                                        detected these menu items - adjust the
+                                        deduction amounts as needed.
+                                    </p>
+
+                                    {/* Suggested Mappings */}
+                                    {suggestedMappings.length > 0 && (
+                                        <div className="mb-4 space-y-3">
+                                            <h3 className="font-bold text-blue-900 dark:text-blue-200">
+                                                Auto-Detected Links:
+                                            </h3>
+                                            {suggestedMappings.map(
+                                                (mapping, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="rounded-lg border border-blue-200 bg-white p-4 dark:border-blue-700 dark:bg-gray-800"
+                                                    >
+                                                        <div className="grid grid-cols-3 items-center gap-4">
+                                                            <div>
+                                                                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                    Menu Item:
+                                                                </label>
+                                                                <p className="font-medium text-black dark:text-white">
+                                                                    {
+                                                                        mapping.menu_item_name
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                    Quantity
+                                                                    Used:
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.001"
+                                                                    min="0"
+                                                                    value={
+                                                                        mapping.quantity_used
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateSuggestedMapping(
+                                                                            index,
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                    className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                    Unit:
+                                                                </label>
+                                                                <p className="font-medium text-black dark:text-white">
+                                                                    {
+                                                                        mapping.unit
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Custom Mappings */}
+                                    {customMappings.length > 0 && (
+                                        <div className="space-y-3">
+                                            <h3 className="font-bold text-blue-900 dark:text-blue-200">
+                                                Manual Links:
+                                            </h3>
+                                            {customMappings.map(
+                                                (mapping, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="rounded-lg border border-blue-200 bg-white p-4 dark:border-blue-700 dark:bg-gray-800"
+                                                    >
+                                                        <div className="grid grid-cols-4 items-center gap-4">
+                                                            <div>
+                                                                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                    Menu Item:
+                                                                </label>
+                                                                <select
+                                                                    value={
+                                                                        mapping.menu_item_id
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateCustomMapping(
+                                                                            index,
+                                                                            'menu_item_id',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                                >
+                                                                    <option value="">
+                                                                        Select
+                                                                        Menu
+                                                                        Item
+                                                                    </option>
+                                                                    {menuItems.map(
+                                                                        (
+                                                                            item,
+                                                                        ) => (
+                                                                            <option
+                                                                                key={
+                                                                                    item.id
+                                                                                }
+                                                                                value={
+                                                                                    item.id
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    item.name
+                                                                                }
+                                                                            </option>
+                                                                        ),
+                                                                    )}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                    Quantity:
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.001"
+                                                                    min="0"
+                                                                    value={
+                                                                        mapping.quantity_used
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateCustomMapping(
+                                                                            index,
+                                                                            'quantity_used',
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                    className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                                    Unit:
+                                                                </label>
+                                                                <select
+                                                                    value={
+                                                                        mapping.unit
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateCustomMapping(
+                                                                            index,
+                                                                            'unit',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                                >
+                                                                    {unitOptions.map(
+                                                                        (
+                                                                            unit,
+                                                                        ) => (
+                                                                            <option
+                                                                                key={
+                                                                                    unit.value
+                                                                                }
+                                                                                value={
+                                                                                    unit.value
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    unit.label
+                                                                                }
+                                                                            </option>
+                                                                        ),
+                                                                    )}
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        removeCustomMapping(
+                                                                            index,
+                                                                        )
+                                                                    }
+                                                                    className="rounded bg-red-600 px-2 py-1 text-white hover:bg-red-700"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Auto-Deduction Preview */}
                             {data.name && (
                                 <div
@@ -407,11 +704,9 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                                         }
                                                     </div>
                                                     <div className="text-xs font-medium opacity-75">
-                                                        When menu items using
-                                                        this ingredient are sold
-                                                        in POS, inventory will
-                                                        automatically decrease
-                                                        with precise quantities
+                                                        Admin can customize all
+                                                        quantities above before
+                                                        saving!
                                                     </div>
                                                 </div>
                                             )}
@@ -419,6 +714,8 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Rest of form sections remain the same... */}
 
                             {/* Stock Information */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
@@ -476,9 +773,6 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                                 {errors.minimum_stock}
                                             </p>
                                         )}
-                                        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                            Alert threshold for low stock
-                                        </p>
                                     </div>
 
                                     <div>
@@ -569,9 +863,6 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                                 {errors.unit_cost}
                                             </p>
                                         )}
-                                        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                            Cost per unit of measure
-                                        </p>
                                     </div>
 
                                     <div>
@@ -597,9 +888,6 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                                 {errors.selling_price}
                                             </p>
                                         )}
-                                        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                            If sold directly to customers
-                                        </p>
                                     </div>
                                 </div>
 
@@ -632,7 +920,9 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                 >
                                     <Save className="h-4 w-4" />
                                     <span>
-                                        {processing ? 'Saving...' : 'Save Item'}
+                                        {processing
+                                            ? 'Saving...'
+                                            : 'Save Item with Custom Mappings'}
                                     </span>
                                 </button>
 
@@ -649,11 +939,47 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
 
                     {/* Sidebar Info */}
                     <div className="space-y-6">
+                        {/* Ingredient Mapping Guide */}
+                        <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 shadow-lg dark:border-green-700 dark:bg-green-900/20">
+                            <h3 className="flex items-center font-bold text-green-900 dark:text-green-200">
+                                <Edit3 className="mr-2 h-5 w-5" />
+                                Custom Control
+                            </h3>
+                            <div className="mt-2 space-y-2 text-sm text-green-800 dark:text-green-300">
+                                <p className="font-medium">
+                                    You can now edit ingredient quantities:
+                                </p>
+                                <div className="space-y-1 text-xs">
+                                    <div>
+                                        <strong>Change -0.050 kg</strong> to any
+                                        amount you need
+                                    </div>
+                                    <div>
+                                        <strong>Add manual links</strong> to
+                                        other menu items
+                                    </div>
+                                    <div>
+                                        <strong>Remove unwanted</strong>{' '}
+                                        auto-detected links
+                                    </div>
+                                    <div>
+                                        <strong>Perfect control</strong> over
+                                        inventory deduction
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-xs font-medium opacity-75">
+                                    Example: "Andazi Flour" auto-detects
+                                    "Andazi" at -0.050 kg, but you can change it
+                                    to -0.075 kg or any amount!
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Auto-Deduction Info */}
                         <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4 shadow-lg dark:border-blue-700 dark:bg-blue-900/20">
                             <h3 className="flex items-center font-bold text-blue-900 dark:text-blue-200">
                                 <Zap className="mr-2 h-5 w-5" />
-                                Automatic Deduction
+                                Automatic Detection
                             </h3>
                             <div className="mt-2 space-y-2 text-sm text-blue-800 dark:text-blue-300">
                                 <p className="font-medium">
@@ -661,30 +987,26 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                                 </p>
                                 <div className="space-y-1 text-xs">
                                     <div>
-                                        <strong>Chicken</strong> - Auto-deducts
-                                        for chicken dishes
+                                        <strong>Chicken</strong> - Auto-detects
+                                        chicken dishes
                                     </div>
                                     <div>
-                                        <strong>Potatoes</strong> - Auto-deducts
-                                        for chips and bhajia
+                                        <strong>Potatoes</strong> - Auto-detects
+                                        chips and bhajia
                                     </div>
                                     <div>
-                                        <strong>Wings</strong> - Auto-deducts
-                                        for wing dishes
+                                        <strong>Flour</strong> - Auto-detects
+                                        andazi, chapati, etc.
                                     </div>
                                     <div>
-                                        <strong>Cooking Oil</strong> -
-                                        Auto-deducts for fried items
+                                        <strong>Wings</strong> - Auto-detects
+                                        wing dishes
                                     </div>
                                     <div>
-                                        <strong>Spices & Seasonings</strong> -
-                                        Auto-deducts for seasoned dishes
+                                        <strong>Spices</strong> - Auto-detects
+                                        seasoned dishes
                                     </div>
                                 </div>
-                                <p className="mt-3 text-xs font-medium opacity-75">
-                                    Categories can be created on-the-fly using
-                                    the + button
-                                </p>
                             </div>
                         </div>
 
@@ -695,49 +1017,20 @@ export default function Create({ user, categories, newCategory }: CreateProps) {
                             </h3>
                             <ul className="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
                                 <li>
-                                    • Use descriptive names for easy searching
+                                    • Type ingredient name to see auto-detection
                                 </li>
-                                <li>• Set minimum stock to avoid shortages</li>
-                                <li>• Choose the correct unit of measure</li>
+                                <li>• Edit quantities to match your recipes</li>
                                 <li>
-                                    • SKU will be auto-generated if left empty
+                                    • Add manual links for special ingredients
                                 </li>
-                                <li>• Click + to create new categories</li>
-                                <li>
-                                    • Auto-deduction works regardless of
-                                    category
-                                </li>
+                                <li>• Use + button to create categories</li>
+                                <li>• All mappings are fully customizable</li>
                             </ul>
-                        </div>
-
-                        {/* Categories Available */}
-                        <div className="rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                            <h3 className="font-bold text-gray-900 dark:text-white">
-                                Categories Available
-                            </h3>
-                            <div className="mt-2 space-y-1">
-                                {categoriesList.map((category) => (
-                                    <div
-                                        key={category.id}
-                                        className="flex items-center text-sm"
-                                    >
-                                        <div
-                                            className="mr-2 h-3 w-3 rounded-full"
-                                            style={{
-                                                backgroundColor: category.color,
-                                            }}
-                                        />
-                                        <span className="font-medium text-gray-900 dark:text-white">
-                                            {category.name}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Category Creation Modal */}
+                {/* Category Creation Modal - Same as before */}
                 {showCategoryModal && (
                     <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
                         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">

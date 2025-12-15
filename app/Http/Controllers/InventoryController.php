@@ -246,10 +246,26 @@ class InventoryController extends Controller
         $user = $request->user();
         
         $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
+        
+        // Get available menu items for ingredient mapping
+        $menuItems = collect();
+        if (class_exists(\App\Models\MenuItem::class)) {
+            $menuItems = \App\Models\MenuItem::where('is_available', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'category_id'])
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'category_id' => $item->category_id ?? null,
+                    ];
+                });
+        }
 
         return Inertia::render('inventory/create', [
             'user' => ['name' => $user->name, 'email' => $user->email],
             'categories' => $categories,
+            'menuItems' => $menuItems,
             'newCategory' => session('newCategory'), // Pass flash data if available
         ]);
     }
@@ -269,11 +285,26 @@ class InventoryController extends Controller
             'selling_price' => 'nullable|numeric|min:0',
             'track_stock' => 'boolean',
             'storage_requirements' => 'nullable|array',
+            'ingredient_mappings' => 'nullable|array',
+            'ingredient_mappings.*.menu_item_id' => 'required_with:ingredient_mappings|exists:menu_items,id',
+            'ingredient_mappings.*.quantity_used' => 'required_with:ingredient_mappings|numeric|min:0.001',
+            'ingredient_mappings.*.unit' => 'required_with:ingredient_mappings|string|max:20',
         ]);
 
         try {
             $inventoryItem = InventoryItem::create([
-                ...$validatedData,
+                'name' => $validatedData['name'],
+                'sku' => $validatedData['sku'],
+                'description' => $validatedData['description'],
+                'category_id' => $validatedData['category_id'],
+                'current_stock' => $validatedData['current_stock'],
+                'minimum_stock' => $validatedData['minimum_stock'],
+                'maximum_stock' => $validatedData['maximum_stock'],
+                'unit_of_measure' => $validatedData['unit_of_measure'],
+                'unit_cost' => $validatedData['unit_cost'],
+                'selling_price' => $validatedData['selling_price'],
+                'track_stock' => $validatedData['track_stock'] ?? true,
+                'storage_requirements' => $validatedData['storage_requirements'],
                 'created_by' => $request->user()->id,
                 'is_active' => true,
                 'last_restocked' => $validatedData['current_stock'] > 0 ? now() : null,
@@ -296,8 +327,15 @@ class InventoryController extends Controller
                 ]);
             }
 
-            // Automatic ingredient mapping creation (if needed)
-            $linkedCount = $this->createAutomaticIngredientMappings($inventoryItem);
+            // Handle ingredient mappings
+            $linkedCount = 0;
+            if (isset($validatedData['ingredient_mappings']) && !empty($validatedData['ingredient_mappings'])) {
+                // User provided custom mappings - use those
+                $linkedCount = $this->saveIngredientMappings($inventoryItem->id, $validatedData['ingredient_mappings']);
+            } else {
+                // No custom mappings provided - try automatic detection
+                $linkedCount = $this->createAutomaticIngredientMappings($inventoryItem);
+            }
 
             $message = "Inventory item '{$inventoryItem->name}' created successfully!";
             if ($linkedCount > 0) {
@@ -362,6 +400,200 @@ class InventoryController extends Controller
         }
         
         return $linkedCount;
+    }
+
+    /**
+     * Save custom ingredient mappings for inventory item
+     */
+    private function saveIngredientMappings(int $inventoryItemId, array $mappings): int
+    {
+        $savedCount = 0;
+        
+        foreach ($mappings as $mapping) {
+            // Check if mapping already exists
+            $existingMapping = MenuItemIngredient::where([
+                'menu_item_id' => $mapping['menu_item_id'],
+                'inventory_item_id' => $inventoryItemId,
+            ])->first();
+            
+            if ($existingMapping) {
+                // Update existing mapping
+                $existingMapping->update([
+                    'quantity_used' => $mapping['quantity_used'],
+                    'unit' => $mapping['unit'],
+                ]);
+            } else {
+                // Create new mapping
+                MenuItemIngredient::create([
+                    'menu_item_id' => $mapping['menu_item_id'],
+                    'inventory_item_id' => $inventoryItemId,
+                    'quantity_used' => $mapping['quantity_used'],
+                    'unit' => $mapping['unit'],
+                ]);
+            }
+            
+            $savedCount++;
+        }
+        
+        return $savedCount;
+    }
+
+    /**
+     * Update ingredient mappings for existing inventory item
+     */
+    public function updateIngredientMappings(Request $request, InventoryItem $inventoryItem)
+    {
+        $validatedData = $request->validate([
+            'ingredient_mappings' => 'required|array',
+            'ingredient_mappings.*.id' => 'nullable|exists:menu_item_ingredients,id',
+            'ingredient_mappings.*.menu_item_id' => 'required|exists:menu_items,id',
+            'ingredient_mappings.*.quantity_used' => 'required|numeric|min:0.001',
+            'ingredient_mappings.*.unit' => 'required|string|max:20',
+            'ingredient_mappings.*.action' => 'required|in:create,update,delete',
+        ]);
+
+        try {
+            $processedCount = 0;
+
+            foreach ($validatedData['ingredient_mappings'] as $mapping) {
+                switch ($mapping['action']) {
+                    case 'create':
+                        // Check if mapping already exists
+                        $existingMapping = MenuItemIngredient::where([
+                            'menu_item_id' => $mapping['menu_item_id'],
+                            'inventory_item_id' => $inventoryItem->id,
+                        ])->first();
+                        
+                        if (!$existingMapping) {
+                            MenuItemIngredient::create([
+                                'menu_item_id' => $mapping['menu_item_id'],
+                                'inventory_item_id' => $inventoryItem->id,
+                                'quantity_used' => $mapping['quantity_used'],
+                                'unit' => $mapping['unit'],
+                            ]);
+                            $processedCount++;
+                        }
+                        break;
+                        
+                    case 'update':
+                        if (isset($mapping['id'])) {
+                            $ingredientMapping = MenuItemIngredient::find($mapping['id']);
+                            if ($ingredientMapping && $ingredientMapping->inventory_item_id == $inventoryItem->id) {
+                                $ingredientMapping->update([
+                                    'quantity_used' => $mapping['quantity_used'],
+                                    'unit' => $mapping['unit'],
+                                ]);
+                                $processedCount++;
+                            }
+                        }
+                        break;
+                        
+                    case 'delete':
+                        if (isset($mapping['id'])) {
+                            $ingredientMapping = MenuItemIngredient::find($mapping['id']);
+                            if ($ingredientMapping && $ingredientMapping->inventory_item_id == $inventoryItem->id) {
+                                $ingredientMapping->delete();
+                                $processedCount++;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Updated {$processedCount} ingredient mappings successfully!",
+                'processed_count' => $processedCount
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Ingredient mappings update failed', [
+                'inventory_item_id' => $inventoryItem->id,
+                'error' => $e->getMessage(),
+                'data' => $validatedData
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update ingredient mappings: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available menu items for ingredient mapping
+     */
+    public function getMenuItemsForMapping(Request $request)
+    {
+        try {
+            $menuItems = \App\Models\MenuItem::where('is_available', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'category_id'])
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'category_id' => $item->category_id,
+                    ];
+                });
+
+            return response()->json($menuItems);
+        } catch (\Exception $e) {
+            \Log::error('Failed to fetch menu items for mapping', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to fetch menu items'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get suggested ingredient mappings based on inventory item name
+     */
+    public function getSuggestedMappings(Request $request)
+    {
+        $validatedData = $request->validate([
+            'item_name' => 'required|string|max:255',
+        ]);
+
+        try {
+            $itemName = strtolower($validatedData['item_name']);
+            $suggestions = [];
+
+            // Get potential mappings based on item name patterns
+            $ingredientMappings = $this->getIngredientMappingsForItem($itemName);
+
+            foreach ($ingredientMappings as $menuItemName => $quantity) {
+                $menuItem = \App\Models\MenuItem::where('name', $menuItemName)->first();
+                
+                if ($menuItem) {
+                    $suggestions[] = [
+                        'menu_item_id' => $menuItem->id,
+                        'menu_item_name' => $menuItem->name,
+                        'quantity_used' => $quantity['amount'],
+                        'unit' => $quantity['unit'],
+                        'suggested' => true,
+                    ];
+                }
+            }
+
+            return response()->json([
+                'suggestions' => $suggestions,
+                'count' => count($suggestions)
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to get suggested mappings', [
+                'error' => $e->getMessage(),
+                'item_name' => $validatedData['item_name'] ?? 'unknown'
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to get suggested mappings'
+            ], 500);
+        }
     }
 
     /**
@@ -467,11 +699,45 @@ class InventoryController extends Controller
         $user = $request->user();
         
         $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
+        
+        // Get existing ingredient mappings
+        $existingMappings = collect();
+        if (class_exists(MenuItemIngredient::class) && method_exists($inventoryItem, 'menuItemIngredients')) {
+            $existingMappings = $inventoryItem->menuItemIngredients()
+                ->with('menuItem')
+                ->get()
+                ->map(function ($ingredient) {
+                    return [
+                        'id' => $ingredient->id,
+                        'menu_item_id' => $ingredient->menu_item_id,
+                        'menu_item_name' => $ingredient->menuItem->name,
+                        'quantity_used' => $ingredient->quantity_used,
+                        'unit' => $ingredient->unit,
+                    ];
+                });
+        }
+        
+        // Get available menu items for ingredient mapping
+        $menuItems = collect();
+        if (class_exists(\App\Models\MenuItem::class)) {
+            $menuItems = \App\Models\MenuItem::where('is_available', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'category_id'])
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'category_id' => $item->category_id ?? null,
+                    ];
+                });
+        }
 
         return Inertia::render('inventory/edit', [
             'user' => ['name' => $user->name, 'email' => $user->email],
             'inventoryItem' => $inventoryItem->load(['category']),
             'categories' => $categories,
+            'menuItems' => $menuItems,
+            'existingMappings' => $existingMappings,
         ]);
     }
 
@@ -489,16 +755,87 @@ class InventoryController extends Controller
             'selling_price' => 'nullable|numeric|min:0',
             'track_stock' => 'boolean',
             'storage_requirements' => 'nullable|array',
+            'ingredient_mappings' => 'nullable|array',
+            'ingredient_mappings.*.id' => 'nullable|exists:menu_item_ingredients,id',
+            'ingredient_mappings.*.menu_item_id' => 'required_with:ingredient_mappings|exists:menu_items,id',
+            'ingredient_mappings.*.quantity_used' => 'required_with:ingredient_mappings|numeric|min:0.001',
+            'ingredient_mappings.*.unit' => 'required_with:ingredient_mappings|string|max:20',
+            'ingredient_mappings.*.action' => 'required_with:ingredient_mappings|in:create,update,delete',
         ]);
 
         try {
+            // Update inventory item
             $inventoryItem->update([
-                ...$validatedData,
+                'name' => $validatedData['name'],
+                'sku' => $validatedData['sku'],
+                'description' => $validatedData['description'],
+                'category_id' => $validatedData['category_id'],
+                'minimum_stock' => $validatedData['minimum_stock'],
+                'maximum_stock' => $validatedData['maximum_stock'],
+                'unit_of_measure' => $validatedData['unit_of_measure'],
+                'unit_cost' => $validatedData['unit_cost'],
+                'selling_price' => $validatedData['selling_price'],
+                'track_stock' => $validatedData['track_stock'] ?? true,
+                'storage_requirements' => $validatedData['storage_requirements'],
                 'updated_by' => $request->user()->id,
             ]);
 
+            // Handle ingredient mappings if provided
+            $mappingsUpdated = 0;
+            if (isset($validatedData['ingredient_mappings']) && !empty($validatedData['ingredient_mappings'])) {
+                foreach ($validatedData['ingredient_mappings'] as $mapping) {
+                    switch ($mapping['action']) {
+                        case 'create':
+                            // Check if mapping already exists
+                            $existingMapping = MenuItemIngredient::where([
+                                'menu_item_id' => $mapping['menu_item_id'],
+                                'inventory_item_id' => $inventoryItem->id,
+                            ])->first();
+                            
+                            if (!$existingMapping) {
+                                MenuItemIngredient::create([
+                                    'menu_item_id' => $mapping['menu_item_id'],
+                                    'inventory_item_id' => $inventoryItem->id,
+                                    'quantity_used' => $mapping['quantity_used'],
+                                    'unit' => $mapping['unit'],
+                                ]);
+                                $mappingsUpdated++;
+                            }
+                            break;
+                            
+                        case 'update':
+                            if (isset($mapping['id'])) {
+                                $ingredientMapping = MenuItemIngredient::find($mapping['id']);
+                                if ($ingredientMapping && $ingredientMapping->inventory_item_id == $inventoryItem->id) {
+                                    $ingredientMapping->update([
+                                        'quantity_used' => $mapping['quantity_used'],
+                                        'unit' => $mapping['unit'],
+                                    ]);
+                                    $mappingsUpdated++;
+                                }
+                            }
+                            break;
+                            
+                        case 'delete':
+                            if (isset($mapping['id'])) {
+                                $ingredientMapping = MenuItemIngredient::find($mapping['id']);
+                                if ($ingredientMapping && $ingredientMapping->inventory_item_id == $inventoryItem->id) {
+                                    $ingredientMapping->delete();
+                                    $mappingsUpdated++;
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+
+            $message = "Inventory item '{$inventoryItem->name}' updated successfully!";
+            if ($mappingsUpdated > 0) {
+                $message .= " ({$mappingsUpdated} ingredient mappings updated)";
+            }
+
             return redirect()->route('inventory.show', $inventoryItem)
-                           ->with('success', "Inventory item '{$inventoryItem->name}' updated successfully!");
+                           ->with('success', $message);
 
         } catch (\Exception $e) {
             \Log::error('Inventory item update failed', [

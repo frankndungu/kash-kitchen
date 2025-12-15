@@ -173,11 +173,22 @@ export default function Index({
         setSearchTerm('');
     };
 
-    // Enhanced CSV Export functionality with Dennis's required format
+    // Enhanced CSV Export functionality with Dennis's required format - FULLY FIXED
     const exportToCSV = () => {
         try {
             const currentDate = new Date().toLocaleDateString('en-KE');
             const reportDate = new Date().toISOString().split('T')[0];
+
+            // Helper function to safely format numbers
+            const safeToFixed = (value: any, decimals = 2): string => {
+                const num = Number(value);
+                return isNaN(num) ? '0.00' : num.toFixed(decimals);
+            };
+
+            // Helper function to safely convert to string
+            const safeString = (value: any): string => {
+                return value ? String(value) : '';
+            };
 
             // Prepare CSV data in Dennis's required format
             const csvContent = [
@@ -186,26 +197,26 @@ export default function Index({
                 [`Generated: ${currentDate}`],
                 [''],
 
-                // Inventory Summary Stats
+                // Inventory Summary Stats - FULLY SAFE
                 ['INVENTORY SUMMARY'],
                 ['Metric', 'Value'],
-                ['Total Items', stats.total_items.toString()],
-                ['Total Value', `KES ${stats.total_value.toFixed(2)}`],
-                ['Low Stock Items', stats.low_stock_items.toString()],
-                ['Out of Stock Items', stats.out_of_stock_items.toString()],
-                ['Auto-Deduct Items', stats.auto_deduct_items.toString()],
+                ['Total Items', safeString(stats.total_items)],
+                ['Total Value', `KES ${safeToFixed(stats.total_value)}`],
+                ['Low Stock Items', safeString(stats.low_stock_items)],
+                ['Out of Stock Items', safeString(stats.out_of_stock_items)],
+                ['Auto-Deduct Items', safeString(stats.auto_deduct_items)],
                 ...(stats.avg_stock_level
                     ? [
                           [
                               'Average Stock Level',
-                              `${stats.avg_stock_level.toFixed(1)}%`,
+                              `${safeToFixed(stats.avg_stock_level, 1)}%`,
                           ],
                       ]
                     : []),
                 [''],
 
-                // Low Stock Alerts (if available)
-                ...(lowStockItems.length > 0
+                // Low Stock Alerts (if available) - FULLY SAFE
+                ...(lowStockItems && lowStockItems.length > 0
                     ? [
                           ['LOW STOCK ALERTS'],
                           [
@@ -218,17 +229,17 @@ export default function Index({
                           ...lowStockItems
                               .slice(0, 10)
                               .map((item) => [
-                                  item.name,
-                                  item.current_stock.toString(),
-                                  item.minimum_stock.toString(),
-                                  item.unit_of_measure,
-                                  item.days_until_stockout.toString(),
+                                  safeString(item.name),
+                                  safeToFixed(item.current_stock),
+                                  safeToFixed(item.minimum_stock),
+                                  safeString(item.unit_of_measure),
+                                  safeString(item.days_until_stockout),
                               ]),
                           [''],
                       ]
                     : []),
 
-                // Main Inventory Report in Dennis's Format
+                // Main Inventory Report in Dennis's Format - FULLY SAFE
                 ['DETAILED INVENTORY REPORT'],
                 [
                     'Item',
@@ -240,26 +251,26 @@ export default function Index({
                     'Total Cost',
                 ],
                 ...inventoryItems.data.map((item) => {
-                    const openingStock = item.opening_stock || 0;
-                    const received = item.stock_received || 0;
-                    const used = item.stock_used || 0;
-                    const closingStock = item.current_stock;
-                    const unitCost = item.unit_cost;
+                    const openingStock = Number(item.opening_stock) || 0;
+                    const received = Number(item.stock_received) || 0;
+                    const used = Number(item.stock_used) || 0;
+                    const closingStock = Number(item.current_stock) || 0;
+                    const unitCost = Number(item.unit_cost) || 0;
                     const totalCost = closingStock * unitCost;
 
                     return [
-                        item.name,
-                        openingStock.toFixed(2),
-                        received.toFixed(2),
-                        used.toFixed(2),
-                        closingStock.toFixed(2),
-                        unitCost.toFixed(2),
-                        totalCost.toFixed(2),
+                        safeString(item.name),
+                        safeToFixed(openingStock),
+                        safeToFixed(received),
+                        safeToFixed(used),
+                        safeToFixed(closingStock),
+                        safeToFixed(unitCost),
+                        safeToFixed(totalCost),
                     ];
                 }),
                 [''],
 
-                // Additional Details
+                // Additional Details - FULLY SAFE
                 ['ADDITIONAL ITEM DETAILS'],
                 [
                     'Item Name',
@@ -277,12 +288,12 @@ export default function Index({
                     const autoDeduct = hasAutoDeduction(item) ? 'Yes' : 'No';
 
                     return [
-                        item.name,
-                        item.sku,
-                        item.category.name,
-                        item.unit_of_measure,
-                        item.minimum_stock.toFixed(2),
-                        item.maximum_stock.toFixed(2),
+                        safeString(item.name),
+                        safeString(item.sku),
+                        safeString(item.category?.name),
+                        safeString(item.unit_of_measure),
+                        safeToFixed(item.minimum_stock),
+                        safeToFixed(item.maximum_stock),
                         autoDeduct,
                         stockStatus,
                         formatDate(item.last_restocked),
@@ -312,6 +323,7 @@ export default function Index({
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                URL.revokeObjectURL(url); // Clean up
             }
         } catch (error) {
             console.error('Error exporting CSV:', error);

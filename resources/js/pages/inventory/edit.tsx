@@ -1,8 +1,17 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { ArrowLeft, Package, Save, X } from 'lucide-react';
-import React from 'react';
+import {
+    ArrowLeft,
+    Edit3,
+    Package,
+    Plus,
+    Save,
+    Trash2,
+    X,
+    Zap,
+} from 'lucide-react';
+import React, { useState } from 'react';
 
 interface InventoryItem {
     id: number;
@@ -29,6 +38,35 @@ interface Category {
     color: string;
 }
 
+interface MenuItem {
+    id: number;
+    name: string;
+    category_id: number | null;
+}
+
+interface ExistingMapping {
+    id: number;
+    menu_item_id: number;
+    menu_item_name: string;
+    quantity_used: number;
+    unit: string;
+}
+
+interface IngredientMapping {
+    id?: number;
+    menu_item_id: number;
+    menu_item_name: string;
+    quantity_used: number;
+    unit: string;
+    action: 'create' | 'update' | 'delete';
+}
+
+// Helper type for mappings that are being updated (must have id)
+interface UpdateIngredientMapping extends IngredientMapping {
+    id: number;
+    action: 'update';
+}
+
 interface EditProps {
     user: {
         name: string;
@@ -36,9 +74,17 @@ interface EditProps {
     };
     inventoryItem: InventoryItem;
     categories: Category[];
+    menuItems: MenuItem[];
+    existingMappings: ExistingMapping[];
 }
 
-export default function Edit({ user, inventoryItem, categories }: EditProps) {
+export default function Edit({
+    user,
+    inventoryItem,
+    categories,
+    menuItems,
+    existingMappings,
+}: EditProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Inventory Management',
@@ -65,11 +111,168 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
         unit_cost: inventoryItem.unit_cost.toString(),
         selling_price: inventoryItem.selling_price?.toString() || '',
         track_stock: inventoryItem.track_stock,
+        ingredient_mappings: [] as IngredientMapping[],
     });
+
+    // State for ingredient mappings management
+    const [currentMappings, setCurrentMappings] =
+        useState<ExistingMapping[]>(existingMappings);
+    const [newMappings, setNewMappings] = useState<IngredientMapping[]>([]);
+    const [editingMappings, setEditingMappings] = useState<{
+        [key: number]: boolean;
+    }>({});
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Prepare ingredient mappings for submission
+        const allMappings: IngredientMapping[] = [
+            ...newMappings,
+            ...currentMappings
+                .filter((mapping) => editingMappings[mapping.id]) // Only include edited mappings
+                .map((mapping) => ({
+                    id: mapping.id,
+                    menu_item_id: mapping.menu_item_id,
+                    menu_item_name: mapping.menu_item_name,
+                    quantity_used: mapping.quantity_used,
+                    unit: mapping.unit,
+                    action: 'update' as const,
+                })),
+        ];
+
+        setData('ingredient_mappings', allMappings);
         put(`/inventory/${inventoryItem.id}`);
+    };
+
+    const addNewMapping = () => {
+        setNewMappings([
+            ...newMappings,
+            {
+                menu_item_id: 0,
+                menu_item_name: '',
+                quantity_used: 0,
+                unit: inventoryItem.unit_of_measure,
+                action: 'create',
+            },
+        ]);
+    };
+
+    const updateNewMapping = (
+        index: number,
+        field: keyof IngredientMapping,
+        value: string | number,
+    ) => {
+        const updated = [...newMappings];
+        if (field === 'menu_item_id') {
+            const menuItem = menuItems.find(
+                (item) => item.id === Number(value),
+            );
+            updated[index].menu_item_id = Number(value);
+            updated[index].menu_item_name = menuItem?.name || '';
+        } else if (field === 'quantity_used') {
+            updated[index].quantity_used = Number(value);
+        } else if (
+            field === 'unit' ||
+            field === 'menu_item_name' ||
+            field === 'action'
+        ) {
+            (updated[index] as any)[field] = value;
+        }
+        setNewMappings(updated);
+    };
+
+    const removeNewMapping = (index: number) => {
+        setNewMappings(newMappings.filter((_, i) => i !== index));
+    };
+
+    const startEditingMapping = (mappingId: number) => {
+        setEditingMappings({ ...editingMappings, [mappingId]: true });
+    };
+
+    const cancelEditingMapping = (mappingId: number) => {
+        setEditingMappings({ ...editingMappings, [mappingId]: false });
+        // Reset to original value
+        const originalMapping = existingMappings.find(
+            (m) => m.id === mappingId,
+        );
+        if (originalMapping) {
+            const updated = currentMappings.map((m) =>
+                m.id === mappingId ? { ...originalMapping } : m,
+            );
+            setCurrentMappings(updated);
+        }
+    };
+
+    const updateCurrentMapping = (
+        mappingId: number,
+        field: keyof ExistingMapping,
+        value: string | number,
+    ) => {
+        const updated = currentMappings.map((mapping) => {
+            if (mapping.id === mappingId) {
+                if (field === 'menu_item_id') {
+                    const menuItem = menuItems.find(
+                        (item) => item.id === Number(value),
+                    );
+                    return {
+                        ...mapping,
+                        menu_item_id: Number(value),
+                        menu_item_name:
+                            menuItem?.name || mapping.menu_item_name,
+                    };
+                } else if (field === 'quantity_used') {
+                    return { ...mapping, quantity_used: Number(value) };
+                } else {
+                    return { ...mapping, [field]: value };
+                }
+            }
+            return mapping;
+        });
+        setCurrentMappings(updated);
+    };
+
+    const deleteMapping = async (mappingId: number) => {
+        if (
+            confirm('Are you sure you want to delete this ingredient mapping?')
+        ) {
+            try {
+                const response = await fetch(
+                    `/inventory/${inventoryItem.id}/ingredient-mappings`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN':
+                                document
+                                    .querySelector('meta[name="csrf-token"]')
+                                    ?.getAttribute('content') || '',
+                        },
+                        body: JSON.stringify({
+                            ingredient_mappings: [
+                                {
+                                    id: mappingId,
+                                    menu_item_id: 0,
+                                    quantity_used: 0,
+                                    unit: '',
+                                    action: 'delete',
+                                },
+                            ],
+                        }),
+                    },
+                );
+
+                if (response.ok) {
+                    setCurrentMappings(
+                        currentMappings.filter((m) => m.id !== mappingId),
+                    );
+                } else {
+                    alert('Failed to delete mapping');
+                }
+            } catch (error) {
+                console.error('Error deleting mapping:', error);
+                alert('Error deleting mapping');
+            }
+        }
     };
 
     const unitOptions = [
@@ -85,6 +288,8 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
         { value: 'packs', label: 'Packs' },
     ];
 
+    const totalMappings = currentMappings.length + newMappings.length;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit ${inventoryItem.name} - Inventory`} />
@@ -98,7 +303,8 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
                             Edit {inventoryItem.name}
                         </h1>
                         <p className="font-medium text-gray-600 dark:text-gray-400">
-                            Update inventory item details and settings
+                            Update inventory item details and ingredient
+                            mappings
                         </p>
                     </div>
                     <a
@@ -221,6 +427,374 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
                                         )}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Ingredient Mappings Section */}
+                            <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6 shadow-lg dark:border-blue-700 dark:bg-blue-900/20">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <h2 className="text-lg font-bold text-blue-900 dark:text-blue-200">
+                                        <Zap className="mr-2 inline h-5 w-5" />
+                                        Ingredient Mappings ({
+                                            totalMappings
+                                        }{' '}
+                                        total)
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        onClick={addNewMapping}
+                                        className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                                    >
+                                        <Plus className="mr-1 inline h-4 w-4" />
+                                        Add Mapping
+                                    </button>
+                                </div>
+
+                                <p className="mb-4 text-sm font-medium text-blue-800 dark:text-blue-300">
+                                    Dennis can edit these quantities! Change how
+                                    much inventory is deducted when menu items
+                                    are sold.
+                                </p>
+
+                                {/* Existing Mappings */}
+                                {currentMappings.length > 0 && (
+                                    <div className="mb-4 space-y-3">
+                                        <h3 className="font-bold text-blue-900 dark:text-blue-200">
+                                            Current Mappings:
+                                        </h3>
+                                        {currentMappings.map((mapping) => (
+                                            <div
+                                                key={mapping.id}
+                                                className="rounded-lg border border-blue-200 bg-white p-4 dark:border-blue-700 dark:bg-gray-800"
+                                            >
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <div>
+                                                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            Menu Item:
+                                                        </label>
+                                                        {editingMappings[
+                                                            mapping.id
+                                                        ] ? (
+                                                            <select
+                                                                value={
+                                                                    mapping.menu_item_id
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateCurrentMapping(
+                                                                        mapping.id,
+                                                                        'menu_item_id',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                            >
+                                                                {menuItems.map(
+                                                                    (item) => (
+                                                                        <option
+                                                                            key={
+                                                                                item.id
+                                                                            }
+                                                                            value={
+                                                                                item.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                item.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        ) : (
+                                                            <p className="font-medium text-black dark:text-white">
+                                                                {
+                                                                    mapping.menu_item_name
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            Quantity Used:
+                                                        </label>
+                                                        {editingMappings[
+                                                            mapping.id
+                                                        ] ? (
+                                                            <input
+                                                                type="number"
+                                                                step="0.001"
+                                                                min="0"
+                                                                value={
+                                                                    mapping.quantity_used
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateCurrentMapping(
+                                                                        mapping.id,
+                                                                        'quantity_used',
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        ),
+                                                                    )
+                                                                }
+                                                                className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                            />
+                                                        ) : (
+                                                            <p className="font-medium text-black dark:text-white">
+                                                                {
+                                                                    mapping.quantity_used
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            Unit:
+                                                        </label>
+                                                        {editingMappings[
+                                                            mapping.id
+                                                        ] ? (
+                                                            <select
+                                                                value={
+                                                                    mapping.unit
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateCurrentMapping(
+                                                                        mapping.id,
+                                                                        'unit',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                            >
+                                                                {unitOptions.map(
+                                                                    (unit) => (
+                                                                        <option
+                                                                            key={
+                                                                                unit.value
+                                                                            }
+                                                                            value={
+                                                                                unit.value
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                unit.value
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        ) : (
+                                                            <p className="font-medium text-black dark:text-white">
+                                                                {mapping.unit}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex space-x-1">
+                                                        {editingMappings[
+                                                            mapping.id
+                                                        ] ? (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setEditingMappings(
+                                                                            {
+                                                                                ...editingMappings,
+                                                                                [mapping.id]: false,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                    className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700"
+                                                                >
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        cancelEditingMapping(
+                                                                            mapping.id,
+                                                                        )
+                                                                    }
+                                                                    className="rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        startEditingMapping(
+                                                                            mapping.id,
+                                                                        )
+                                                                    }
+                                                                    className="rounded bg-blue-600 px-2 py-1 text-white hover:bg-blue-700"
+                                                                >
+                                                                    <Edit3 className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        deleteMapping(
+                                                                            mapping.id,
+                                                                        )
+                                                                    }
+                                                                    className="rounded bg-red-600 px-2 py-1 text-white hover:bg-red-700"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* New Mappings */}
+                                {newMappings.length > 0 && (
+                                    <div className="space-y-3">
+                                        <h3 className="font-bold text-blue-900 dark:text-blue-200">
+                                            New Mappings:
+                                        </h3>
+                                        {newMappings.map((mapping, index) => (
+                                            <div
+                                                key={index}
+                                                className="rounded-lg border border-blue-200 bg-white p-4 dark:border-blue-700 dark:bg-gray-800"
+                                            >
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <div>
+                                                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            Menu Item:
+                                                        </label>
+                                                        <select
+                                                            value={
+                                                                mapping.menu_item_id
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateNewMapping(
+                                                                    index,
+                                                                    'menu_item_id',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                        >
+                                                            <option value="">
+                                                                Select Menu Item
+                                                            </option>
+                                                            {menuItems.map(
+                                                                (item) => (
+                                                                    <option
+                                                                        key={
+                                                                            item.id
+                                                                        }
+                                                                        value={
+                                                                            item.id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            item.name
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            Quantity:
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.001"
+                                                            min="0"
+                                                            value={
+                                                                mapping.quantity_used
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateNewMapping(
+                                                                    index,
+                                                                    'quantity_used',
+                                                                    Number(
+                                                                        e.target
+                                                                            .value,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                                            Unit:
+                                                        </label>
+                                                        <select
+                                                            value={mapping.unit}
+                                                            onChange={(e) =>
+                                                                updateNewMapping(
+                                                                    index,
+                                                                    'unit',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="w-full rounded border-2 border-gray-300 px-2 py-1 text-black focus:border-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                        >
+                                                            {unitOptions.map(
+                                                                (unit) => (
+                                                                    <option
+                                                                        key={
+                                                                            unit.value
+                                                                        }
+                                                                        value={
+                                                                            unit.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            unit.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                removeNewMapping(
+                                                                    index,
+                                                                )
+                                                            }
+                                                            className="rounded bg-red-600 px-2 py-1 text-white hover:bg-red-700"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Show message when no mappings */}
+                                {currentMappings.length === 0 &&
+                                    newMappings.length === 0 && (
+                                        <div className="py-8 text-center">
+                                            <p className="font-medium text-blue-800 dark:text-blue-300">
+                                                No ingredient mappings
+                                                configured. Click "Add Mapping"
+                                                to link this item to menu items.
+                                            </p>
+                                        </div>
+                                    )}
                             </div>
 
                             {/* Stock Settings */}
@@ -424,7 +998,7 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
                                     <span>
                                         {processing
                                             ? 'Saving...'
-                                            : 'Save Changes'}
+                                            : 'Save Changes & Mappings'}
                                     </span>
                                 </button>
 
@@ -441,6 +1015,41 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
 
                     {/* Sidebar Info */}
                     <div className="space-y-6">
+                        {/* Ingredient Mapping Guide */}
+                        <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 shadow-lg dark:border-green-700 dark:bg-green-900/20">
+                            <h3 className="flex items-center font-bold text-green-900 dark:text-green-200">
+                                <Edit3 className="mr-2 h-5 w-5" />
+                                Control Panel
+                            </h3>
+                            <div className="mt-2 space-y-2 text-sm text-green-800 dark:text-green-300">
+                                <p className="font-medium">
+                                    Edit ingredient quantities:
+                                </p>
+                                <div className="space-y-1 text-xs">
+                                    <div>
+                                        <strong>Edit existing</strong> - Click
+                                        pencil icon to modify quantities
+                                    </div>
+                                    <div>
+                                        <strong>Add new links</strong> - Connect
+                                        to any menu item
+                                    </div>
+                                    <div>
+                                        <strong>Delete unwanted</strong> -
+                                        Remove links you don't need
+                                    </div>
+                                    <div>
+                                        <strong>Perfect control</strong> - Set
+                                        exact deduction amounts
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-xs font-medium opacity-75">
+                                    Example: Change Andazi Flour from -0.050 kg
+                                    to -0.075 kg for more accurate recipes!
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Current Item Info */}
                         <div className="rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                             <h3 className="font-bold text-black dark:text-white">
@@ -484,6 +1093,14 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
                                         {inventoryItem.category.name}
                                     </span>
                                 </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                                        Active Mappings:
+                                    </span>
+                                    <span className="font-bold text-blue-600 dark:text-blue-400">
+                                        {totalMappings} linked
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -496,9 +1113,12 @@ export default function Edit({ user, inventoryItem, categories }: EditProps) {
                                 <li>• SKU cannot be changed after creation</li>
                                 <li>• Current stock is managed separately</li>
                                 <li>
-                                    • Cost changes affect future calculations
+                                    • Mapping changes apply to future orders
                                 </li>
-                                <li>• Category changes may affect reports</li>
+                                <li>
+                                    • Use precise quantities for accurate
+                                    costing
+                                </li>
                             </ul>
                         </div>
 

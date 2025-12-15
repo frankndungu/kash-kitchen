@@ -67,9 +67,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // AJAX Endpoints for dynamic data fetching
         Route::post('/inventory/create-category', [InventoryController::class, 'createCategory'])->name('inventory.create-category');
-        Route::post('/inventory/create-supplier', [InventoryController::class, 'createSupplier'])->name('inventory.create-supplier');
-        Route::get('/inventory/suppliers', [InventoryController::class, 'getSuppliers'])->name('inventory.get-suppliers');
         Route::get('/inventory/categories', [InventoryController::class, 'getCategories'])->name('inventory.get-categories');
+        
+        // Ingredient mapping management
+        Route::post('/inventory/{inventoryItem}/ingredient-mappings', [InventoryController::class, 'updateIngredientMappings'])->name('inventory.update-ingredient-mappings');
+        Route::get('/inventory/menu-items-for-mapping', [InventoryController::class, 'getMenuItemsForMapping'])->name('inventory.menu-items-for-mapping');
+        Route::post('/inventory/suggested-mappings', [InventoryController::class, 'getSuggestedMappings'])->name('inventory.suggested-mappings');
 
         // Delete inventory item
         Route::delete('/inventory/{inventoryItem}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
