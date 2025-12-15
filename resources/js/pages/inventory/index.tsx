@@ -4,7 +4,6 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     AlertCircle,
     AlertTriangle,
-    Calendar,
     DollarSign,
     Download,
     Edit,
@@ -14,10 +13,7 @@ import {
     Plus,
     Search,
     ShoppingCart,
-    TrendingDown,
-    TrendingUp,
     Trash2,
-    Truck,
     X,
     Zap,
 } from 'lucide-react';
@@ -47,10 +43,6 @@ interface InventoryItem {
         name: string;
         color: string;
     };
-    supplier: {
-        id: number;
-        name: string;
-    } | null;
     linked_menu_items?: number;
     last_restocked?: string;
     created_at: string;
@@ -60,18 +52,6 @@ interface Category {
     id: number;
     name: string;
     color: string;
-}
-
-interface Supplier {
-    id: number;
-    name: string;
-    items_count: number;
-}
-
-interface TopSupplier {
-    name: string;
-    items_count: number;
-    total_value: number;
 }
 
 interface LowStockItem {
@@ -94,7 +74,6 @@ interface IndexProps {
         total: number;
     };
     categories: Category[];
-    suppliers?: Supplier[];
     stats: {
         total_items: number;
         low_stock_items: number;
@@ -102,15 +81,12 @@ interface IndexProps {
         total_value: number;
         auto_deduct_items: number;
         avg_stock_level?: number;
-        total_suppliers?: number;
     };
-    topSuppliers?: TopSupplier[];
     lowStockItems?: LowStockItem[];
     filters: {
         category?: string;
         status?: string;
         search?: string;
-        supplier?: string;
     };
 }
 
@@ -118,9 +94,7 @@ export default function Index({
     user,
     inventoryItems,
     categories,
-    suppliers = [],
     stats,
-    topSuppliers = [],
     lowStockItems = [],
     filters,
 }: IndexProps) {
@@ -220,40 +194,51 @@ export default function Index({
                 ['Low Stock Items', stats.low_stock_items.toString()],
                 ['Out of Stock Items', stats.out_of_stock_items.toString()],
                 ['Auto-Deduct Items', stats.auto_deduct_items.toString()],
-                ...(stats.avg_stock_level ? [['Average Stock Level', `${stats.avg_stock_level.toFixed(1)}%`]] : []),
-                ...(stats.total_suppliers ? [['Total Suppliers', stats.total_suppliers.toString()]] : []),
+                ...(stats.avg_stock_level
+                    ? [
+                          [
+                              'Average Stock Level',
+                              `${stats.avg_stock_level.toFixed(1)}%`,
+                          ],
+                      ]
+                    : []),
                 [''],
 
-                // Top Suppliers (if available)
-                ...(topSuppliers.length > 0 ? [
-                    ['TOP SUPPLIERS BY VALUE'],
-                    ['Rank', 'Supplier Name', 'Items Count', 'Total Value (KES)'],
-                    ...topSuppliers.map((supplier, index) => [
-                        (index + 1).toString(),
-                        supplier.name,
-                        supplier.items_count.toString(),
-                        supplier.total_value.toFixed(2),
-                    ]),
-                    [''],
-                ] : []),
-
                 // Low Stock Alerts (if available)
-                ...(lowStockItems.length > 0 ? [
-                    ['LOW STOCK ALERTS'],
-                    ['Item Name', 'Current Stock', 'Minimum Stock', 'Unit', 'Days Until Stockout'],
-                    ...lowStockItems.slice(0, 10).map((item) => [
-                        item.name,
-                        item.current_stock.toString(),
-                        item.minimum_stock.toString(),
-                        item.unit_of_measure,
-                        item.days_until_stockout.toString(),
-                    ]),
-                    [''],
-                ] : []),
+                ...(lowStockItems.length > 0
+                    ? [
+                          ['LOW STOCK ALERTS'],
+                          [
+                              'Item Name',
+                              'Current Stock',
+                              'Minimum Stock',
+                              'Unit',
+                              'Days Until Stockout',
+                          ],
+                          ...lowStockItems
+                              .slice(0, 10)
+                              .map((item) => [
+                                  item.name,
+                                  item.current_stock.toString(),
+                                  item.minimum_stock.toString(),
+                                  item.unit_of_measure,
+                                  item.days_until_stockout.toString(),
+                              ]),
+                          [''],
+                      ]
+                    : []),
 
                 // Main Inventory Report in Dennis's Format
                 ['DETAILED INVENTORY REPORT'],
-                ['Item', 'Opening Stock', 'Received', 'Used/Sold', 'Closing Stock', 'Unit Cost', 'Total Cost'],
+                [
+                    'Item',
+                    'Opening Stock',
+                    'Received',
+                    'Used/Sold',
+                    'Closing Stock',
+                    'Unit Cost',
+                    'Total Cost',
+                ],
                 ...inventoryItems.data.map((item) => {
                     const openingStock = item.opening_stock || 0;
                     const received = item.stock_received || 0;
@@ -280,7 +265,6 @@ export default function Index({
                     'Item Name',
                     'SKU',
                     'Category',
-                    'Supplier',
                     'Unit of Measure',
                     'Min Stock',
                     'Max Stock',
@@ -296,7 +280,6 @@ export default function Index({
                         item.name,
                         item.sku,
                         item.category.name,
-                        item.supplier?.name || 'No Supplier',
                         item.unit_of_measure,
                         item.minimum_stock.toFixed(2),
                         item.maximum_stock.toFixed(2),
@@ -386,8 +369,13 @@ export default function Index({
     };
 
     const getStockTrend = () => {
-        const lowStockPercentage = (stats.low_stock_items / Math.max(stats.total_items, 1)) * 100;
-        return lowStockPercentage < 10 ? 'positive' : lowStockPercentage > 25 ? 'negative' : 'neutral';
+        const lowStockPercentage =
+            (stats.low_stock_items / Math.max(stats.total_items, 1)) * 100;
+        return lowStockPercentage < 10
+            ? 'positive'
+            : lowStockPercentage > 25
+              ? 'negative'
+              : 'neutral';
     };
 
     const stockTrend = getStockTrend();
@@ -404,7 +392,8 @@ export default function Index({
                             Inventory Management
                         </h1>
                         <p className="font-medium text-gray-600 dark:text-gray-400">
-                            Track stock levels, manage suppliers, and optimize inventory performance
+                            Track stock levels and optimize inventory
+                            performance with automated deduction
                         </p>
                     </div>
                     <div className="flex space-x-3">
@@ -442,7 +431,9 @@ export default function Index({
                                     Automatic Inventory Deduction is Active
                                 </h3>
                                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                                    {stats.auto_deduct_items} items are configured for automatic deduction when menu items are sold.
+                                    {stats.auto_deduct_items} items are
+                                    configured for automatic deduction when menu
+                                    items are sold.
                                 </p>
                             </div>
                         </div>
@@ -450,7 +441,7 @@ export default function Index({
                 )}
 
                 {/* Main Stats Cards */}
-                <div className="mb-6 grid gap-4 md:grid-cols-4">
+                <div className="mb-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center justify-between">
                             <div>
@@ -475,7 +466,8 @@ export default function Index({
                                     Stock Alerts
                                 </p>
                                 <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-                                    {stats.low_stock_items + stats.out_of_stock_items}
+                                    {stats.low_stock_items +
+                                        stats.out_of_stock_items}
                                 </p>
                                 <p
                                     className={`text-sm font-medium ${
@@ -509,178 +501,100 @@ export default function Index({
                             <Zap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                         </div>
                     </div>
-
-                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg transition-shadow hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
-                                    Active Suppliers
-                                </p>
-                                <p className="text-3xl font-bold text-black dark:text-white">
-                                    {stats.total_suppliers || suppliers.length || 0}
-                                </p>
-                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                    {stats.total_suppliers ? `Avg ${(stats.total_items / Math.max(stats.total_suppliers, 1)).toFixed(1)} items/supplier` : 'Managing supply chain'}
-                                </p>
-                            </div>
-                            <Truck className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                        </div>
-                    </div>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Low Stock Alerts */}
-                    <div className="lg:col-span-1">
-                        <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                            <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
-                                <AlertTriangle className="mr-2 h-5 w-5 text-orange-600" />
-                                Low Stock Alerts
-                            </h2>
-
-                            <div className="space-y-3">
-                                {lowStockItems.length > 0 ? (
-                                    lowStockItems.slice(0, 5).map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="rounded-lg border-2 border-orange-200 bg-orange-50 p-3 dark:border-orange-700 dark:bg-orange-900/20"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="font-bold text-orange-900 dark:text-orange-200">
-                                                        {item.name}
-                                                    </h4>
-                                                    <p className="text-sm text-orange-700 dark:text-orange-300">
-                                                        {item.current_stock} {item.unit_of_measure} left
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                                                        {item.days_until_stockout}d
+                {/* Low Stock Alerts - Full Width */}
+                <div className="mb-6">
+                    <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                        <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
+                            <AlertTriangle className="mr-2 h-5 w-5 text-orange-600" />
+                            Low Stock Alerts
+                        </h2>
+                        <Link
+                            href="/inventory/reports/low-stock"
+                            className="text-sm font-bold text-orange-600 transition-colors hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+                        >
+                            View all {lowStockItems.length} alerts →
+                        </Link>
+                        <div className="space-y-3">
+                            {lowStockItems.length > 0 ? (
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {lowStockItems
+                                        .slice(0, 8)
+                                        .map((item, index) => (
+                                            <div
+                                                key={index}
+                                                className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4 dark:border-orange-700 dark:bg-orange-900/20"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-orange-900 dark:text-orange-200">
+                                                            {item.name}
+                                                        </h4>
+                                                        <p className="text-sm text-orange-700 dark:text-orange-300">
+                                                            {item.current_stock}{' '}
+                                                            {
+                                                                item.unit_of_measure
+                                                            }{' '}
+                                                            left
+                                                        </p>
                                                     </div>
-                                                    <div className="text-xs font-medium text-orange-700 dark:text-orange-300">
-                                                        Until out
+                                                    <div className="ml-2 text-right">
+                                                        <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                                                            {
+                                                                item.days_until_stockout
+                                                            }
+                                                            d
+                                                        </div>
+                                                        <div className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                                            Until out
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 text-center dark:border-green-700 dark:bg-green-900/20">
-                                        <Package className="mx-auto h-8 w-8 text-green-600 dark:text-green-400" />
-                                        <p className="mt-2 font-medium text-green-700 dark:text-green-300">
-                                            All items well stocked!
-                                        </p>
-                                    </div>
-                                )}
+                                        ))}
+                                </div>
+                            ) : (
+                                <div className="rounded-lg border-2 border-green-200 bg-green-50 p-8 text-center dark:border-green-700 dark:bg-green-900/20">
+                                    <Package className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
+                                    <p className="mt-2 text-lg font-bold text-green-700 dark:text-green-300">
+                                        All items well stocked!
+                                    </p>
+                                    <p className="text-sm text-green-600 dark:text-green-400">
+                                        No items are currently below minimum
+                                        stock levels.
+                                    </p>
+                                </div>
+                            )}
 
-                                {lowStockItems.length > 5 && (
-                                    <div className="text-center">
-                                        <Link
-                                            href="/inventory/reports/low-stock"
-                                            className="text-sm font-bold text-orange-600 transition-colors hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-                                        >
-                                            View all {lowStockItems.length} alerts →
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Top Suppliers */}
-                    <div className="lg:col-span-2">
-                        <div className="overflow-hidden rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                            <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
-                                <h2 className="flex items-center text-lg font-bold text-white">
-                                    <Truck className="mr-2 h-5 w-5" />
-                                    {topSuppliers.length > 0 ? 'Top Suppliers by Value' : 'Supplier Information'}
-                                </h2>
-                            </div>
-                            <div className="overflow-x-auto">
-                                {topSuppliers.length > 0 ? (
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50 dark:bg-gray-700">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
-                                                    Supplier
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
-                                                    Items
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
-                                                    Total Value
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                            {topSuppliers.map((supplier, index) => (
-                                                <tr
-                                                    key={index}
-                                                    className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
-                                                >
-                                                    <td className="px-4 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <div className="mr-3 flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-sm font-bold text-red-800 dark:bg-red-900 dark:text-red-200">
-                                                                {index + 1}
-                                                            </div>
-                                                            <div className="font-bold text-black dark:text-white">
-                                                                {supplier.name}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap">
-                                                        <span className={`text-sm font-bold ${
-                                                            supplier.items_count > 0 
-                                                                ? 'text-black dark:text-white' 
-                                                                : 'text-gray-500 dark:text-gray-400'
-                                                        }`}>
-                                                            {supplier.items_count > 0 
-                                                                ? supplier.items_count 
-                                                                : 'No items'
-                                                            }
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-4 whitespace-nowrap">
-                                                        <span className={`text-sm font-bold ${
-                                                            supplier.total_value > 0 
-                                                                ? 'text-red-600 dark:text-red-400' 
-                                                                : 'text-gray-500 dark:text-gray-400'
-                                                        }`}>
-                                                            {supplier.total_value > 0 
-                                                                ? formatCurrency(supplier.total_value)
-                                                                : 'KES 0.00'
-                                                            }
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    <div className="p-8 text-center">
-                                        <Truck className="mx-auto h-12 w-12 text-gray-400" />
-                                        <h3 className="mt-2 font-medium text-gray-900 dark:text-gray-100">
-                                            No supplier data available
-                                        </h3>
-                                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                            Add suppliers to inventory items to see performance metrics.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                            {lowStockItems.length > 8 && (
+                                <div className="border-t border-orange-200 pt-4 text-center dark:border-orange-700">
+                                    <Link
+                                        href="/inventory/reports/low-stock"
+                                        className="text-sm font-bold text-orange-600 transition-colors hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+                                    >
+                                        View all {lowStockItems.length} alerts →
+                                    </Link>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Search and Filters */}
-                <div className="mb-6 mt-6 space-y-4">
+                <div className="mt-6 mb-6 space-y-4">
                     <div className="flex flex-wrap items-center gap-4">
-                        <form onSubmit={handleSearch} className="min-w-64 flex-1">
+                        <form
+                            onSubmit={handleSearch}
+                            className="min-w-64 flex-1"
+                        >
                             <div className="flex rounded-lg border-2 border-gray-300 bg-white shadow-md dark:border-gray-600 dark:bg-gray-800">
                                 <input
                                     type="text"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) =>
+                                        setSearchTerm(e.target.value)
+                                    }
                                     placeholder="Search items by name, SKU, or description..."
                                     className="flex-1 rounded-l-lg border-none bg-transparent px-4 py-2 text-black focus:ring-0 focus:outline-none dark:text-white"
                                 />
@@ -699,7 +613,9 @@ export default function Index({
                             <Filter className="h-4 w-4" />
                             <span>Filters</span>
                         </button>
-                        {(filters.category || filters.status || filters.search || filters.supplier) && (
+                        {(filters.category ||
+                            filters.status ||
+                            filters.search) && (
                             <button
                                 onClick={clearFilters}
                                 className="rounded-lg bg-red-100 px-3 py-2 text-sm font-bold text-red-800 transition-colors hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300"
@@ -723,57 +639,49 @@ export default function Index({
                     )}
 
                     {showFilters && (
-                        <div className="grid gap-4 rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg md:grid-cols-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div className="grid gap-4 rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg md:grid-cols-3 dark:border-gray-700 dark:bg-gray-800">
                             <div>
                                 <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                     Category
                                 </label>
                                 <select
                                     value={filters.category || ''}
-                                    onChange={(e) => updateFilter('category', e.target.value)}
+                                    onChange={(e) =>
+                                        updateFilter('category', e.target.value)
+                                    }
                                     className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 >
                                     <option value="">All Categories</option>
                                     {categories.map((category) => (
-                                        <option key={category.id} value={category.id}>
+                                        <option
+                                            key={category.id}
+                                            value={category.id}
+                                        >
                                             {category.name}
                                         </option>
                                     ))}
                                 </select>
                             </div>
-                            {suppliers.length > 0 && (
-                                <div>
-                                    <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        Supplier
-                                    </label>
-                                    <select
-                                        value={filters.supplier || ''}
-                                        onChange={(e) => updateFilter('supplier', e.target.value)}
-                                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                    >
-                                        <option value="">All Suppliers</option>
-                                        {suppliers.map((supplier) => (
-                                            <option key={supplier.id} value={supplier.id}>
-                                                {supplier.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
                             <div>
                                 <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                     Stock Status
                                 </label>
                                 <select
                                     value={filters.status || ''}
-                                    onChange={(e) => updateFilter('status', e.target.value)}
+                                    onChange={(e) =>
+                                        updateFilter('status', e.target.value)
+                                    }
                                     className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                 >
                                     <option value="">All Items</option>
                                     <option value="in_stock">In Stock</option>
                                     <option value="low_stock">Low Stock</option>
-                                    <option value="out_of_stock">Out of Stock</option>
-                                    <option value="auto_deduct">Auto-Deduct Items</option>
+                                    <option value="out_of_stock">
+                                        Out of Stock
+                                    </option>
+                                    <option value="auto_deduct">
+                                        Auto-Deduct Items
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -817,9 +725,12 @@ export default function Index({
                             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                                 {inventoryItems.data.length > 0 ? (
                                     inventoryItems.data.map((item) => {
-                                        const stockStatus = getStockStatus(item);
-                                        const stockPercentage = getStockPercentage(item);
-                                        const autoDeduct = hasAutoDeduction(item);
+                                        const stockStatus =
+                                            getStockStatus(item);
+                                        const stockPercentage =
+                                            getStockPercentage(item);
+                                        const autoDeduct =
+                                            hasAutoDeduction(item);
                                         const StockIcon = stockStatus.icon;
 
                                         return (
@@ -842,11 +753,6 @@ export default function Index({
                                                         <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                                             SKU: {item.sku}
                                                         </p>
-                                                        {item.supplier && (
-                                                            <p className="text-xs font-medium text-gray-500 dark:text-gray-500">
-                                                                {item.supplier.name}
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -854,7 +760,8 @@ export default function Index({
                                                         className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold"
                                                         style={{
                                                             backgroundColor: `${item.category.color}20`,
-                                                            color: item.category.color,
+                                                            color: item.category
+                                                                .color,
                                                         }}
                                                     >
                                                         {item.category.name}
@@ -864,21 +771,32 @@ export default function Index({
                                                     <div className="space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-sm font-bold text-black dark:text-white">
-                                                                {Number(item.current_stock).toFixed(2)} {item.unit_of_measure}
+                                                                {Number(
+                                                                    item.current_stock,
+                                                                ).toFixed(
+                                                                    2,
+                                                                )}{' '}
+                                                                {
+                                                                    item.unit_of_measure
+                                                                }
                                                             </span>
                                                             <span
                                                                 className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-bold ${stockStatus.color}`}
                                                             >
                                                                 <StockIcon className="mr-1 h-3 w-3" />
-                                                                {stockStatus.status}
+                                                                {
+                                                                    stockStatus.status
+                                                                }
                                                             </span>
                                                         </div>
                                                         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-600">
                                                             <div
                                                                 className={`h-2 rounded-full transition-all ${
-                                                                    stockPercentage > 50
+                                                                    stockPercentage >
+                                                                    50
                                                                         ? 'bg-green-500'
-                                                                        : stockPercentage > 20
+                                                                        : stockPercentage >
+                                                                            20
                                                                           ? 'bg-yellow-500'
                                                                           : 'bg-red-500'
                                                                 }`}
@@ -888,7 +806,13 @@ export default function Index({
                                                             />
                                                         </div>
                                                         <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                            Min: {Number(item.minimum_stock).toFixed(2)} {item.unit_of_measure}
+                                                            Min:{' '}
+                                                            {Number(
+                                                                item.minimum_stock,
+                                                            ).toFixed(2)}{' '}
+                                                            {
+                                                                item.unit_of_measure
+                                                            }
                                                         </div>
                                                     </div>
                                                 </td>
@@ -897,7 +821,10 @@ export default function Index({
                                                         <div className="flex items-center justify-center space-x-1">
                                                             <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                                             <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                                                                {item.linked_menu_items} linked
+                                                                {
+                                                                    item.linked_menu_items
+                                                                }{' '}
+                                                                linked
                                                             </span>
                                                         </div>
                                                     ) : (
@@ -909,16 +836,28 @@ export default function Index({
                                                 <td className="px-6 py-4">
                                                     <div>
                                                         <div className="font-bold text-black dark:text-white">
-                                                            {formatCurrency(item.current_stock * item.unit_cost)}
+                                                            {formatCurrency(
+                                                                item.current_stock *
+                                                                    item.unit_cost,
+                                                            )}
                                                         </div>
                                                         <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                            @ {formatCurrency(item.unit_cost)}/{item.unit_of_measure}
+                                                            @{' '}
+                                                            {formatCurrency(
+                                                                item.unit_cost,
+                                                            )}
+                                                            /
+                                                            {
+                                                                item.unit_of_measure
+                                                            }
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                                        {formatDate(item.last_restocked)}
+                                                        {formatDate(
+                                                            item.last_restocked,
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -938,7 +877,11 @@ export default function Index({
                                                             <span>Edit</span>
                                                         </Link>
                                                         <button
-                                                            onClick={() => handleDeleteClick(item)}
+                                                            onClick={() =>
+                                                                handleDeleteClick(
+                                                                    item,
+                                                                )
+                                                            }
                                                             className="flex items-center space-x-1 rounded-lg bg-red-100 px-3 py-2 text-xs font-bold text-red-800 transition-colors hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
                                                         >
                                                             <Trash2 className="h-3 w-3" />
@@ -961,19 +904,28 @@ export default function Index({
                                                     {filters.search ? (
                                                         <>
                                                             <p className="font-bold">
-                                                                No items found for "{filters.search}"
+                                                                No items found
+                                                                for "
+                                                                {filters.search}
+                                                                "
                                                             </p>
                                                             <p className="text-sm">
-                                                                Try a different search term or clear filters
+                                                                Try a different
+                                                                search term or
+                                                                clear filters
                                                             </p>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <p className="font-bold">
-                                                                No inventory items found
+                                                                No inventory
+                                                                items found
                                                             </p>
                                                             <p className="text-sm">
-                                                                Create your first inventory item to get started
+                                                                Create your
+                                                                first inventory
+                                                                item to get
+                                                                started
                                                             </p>
                                                         </>
                                                     )}
@@ -984,7 +936,9 @@ export default function Index({
                                                         className="flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition-colors hover:bg-red-700"
                                                     >
                                                         <Plus className="h-4 w-4" />
-                                                        <span>Add First Item</span>
+                                                        <span>
+                                                            Add First Item
+                                                        </span>
                                                     </Link>
                                                 )}
                                             </div>
@@ -1000,26 +954,38 @@ export default function Index({
                         <div className="border-t-2 border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
                             <div className="flex items-center justify-between">
                                 <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Page {inventoryItems.current_page} of {inventoryItems.last_page}
+                                    Page {inventoryItems.current_page} of{' '}
+                                    {inventoryItems.last_page}
                                 </div>
                                 <div className="flex space-x-2">
                                     {inventoryItems.current_page > 1 && (
                                         <Link
-                                            href={`/inventory?${new URLSearchParams({
-                                                ...filters,
-                                                page: String(inventoryItems.current_page - 1),
-                                            }).toString()}`}
+                                            href={`/inventory?${new URLSearchParams(
+                                                {
+                                                    ...filters,
+                                                    page: String(
+                                                        inventoryItems.current_page -
+                                                            1,
+                                                    ),
+                                                },
+                                            ).toString()}`}
                                             className="rounded-lg border-2 border-gray-300 px-3 py-1 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                                         >
                                             Previous
                                         </Link>
                                     )}
-                                    {inventoryItems.current_page < inventoryItems.last_page && (
+                                    {inventoryItems.current_page <
+                                        inventoryItems.last_page && (
                                         <Link
-                                            href={`/inventory?${new URLSearchParams({
-                                                ...filters,
-                                                page: String(inventoryItems.current_page + 1),
-                                            }).toString()}`}
+                                            href={`/inventory?${new URLSearchParams(
+                                                {
+                                                    ...filters,
+                                                    page: String(
+                                                        inventoryItems.current_page +
+                                                            1,
+                                                    ),
+                                                },
+                                            ).toString()}`}
                                             className="rounded-lg bg-red-600 px-3 py-1 text-sm font-bold text-white transition-colors hover:bg-red-700"
                                         >
                                             Next
@@ -1048,7 +1014,12 @@ export default function Index({
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => setDeleteModal({ show: false, item: null })}
+                                    onClick={() =>
+                                        setDeleteModal({
+                                            show: false,
+                                            item: null,
+                                        })
+                                    }
                                     className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200"
                                 >
                                     <X className="h-5 w-5" />
@@ -1057,19 +1028,27 @@ export default function Index({
 
                             <div className="mt-4 rounded-lg border-2 border-red-200 bg-red-50 p-4 dark:border-red-700 dark:bg-red-900/20">
                                 <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                                    <strong>{deleteModal.item.name}</strong> will be permanently deleted.
+                                    <strong>{deleteModal.item.name}</strong>{' '}
+                                    will be permanently deleted.
                                 </p>
                                 <p className="mt-2 text-xs text-red-700 dark:text-red-300">
                                     • All stock movements will be removed
                                     <br />
                                     • Menu item links will be removed
-                                    <br />• Current stock: {deleteModal.item.current_stock} {deleteModal.item.unit_of_measure}
+                                    <br />• Current stock:{' '}
+                                    {deleteModal.item.current_stock}{' '}
+                                    {deleteModal.item.unit_of_measure}
                                 </p>
                             </div>
 
                             <div className="mt-6 flex space-x-3">
                                 <button
-                                    onClick={() => setDeleteModal({ show: false, item: null })}
+                                    onClick={() =>
+                                        setDeleteModal({
+                                            show: false,
+                                            item: null,
+                                        })
+                                    }
                                     className="flex-1 rounded-lg border-2 border-gray-300 px-4 py-2 font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                                 >
                                     Cancel

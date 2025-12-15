@@ -21,22 +21,12 @@ interface InventoryItem {
         name: string;
         color: string;
     };
-    supplier: {
-        id: number;
-        name: string;
-    } | null;
 }
 
 interface Category {
     id: number;
     name: string;
     color: string;
-}
-
-interface Supplier {
-    id: number;
-    name: string;
-    contact_person: string;
 }
 
 interface EditProps {
@@ -46,15 +36,9 @@ interface EditProps {
     };
     inventoryItem: InventoryItem;
     categories: Category[];
-    suppliers: Supplier[];
 }
 
-export default function Edit({
-    user,
-    inventoryItem,
-    categories,
-    suppliers,
-}: EditProps) {
+export default function Edit({ user, inventoryItem, categories }: EditProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Inventory Management',
@@ -75,7 +59,6 @@ export default function Edit({
         sku: inventoryItem.sku,
         description: inventoryItem.description || '',
         category_id: inventoryItem.category.id.toString(),
-        supplier_id: inventoryItem.supplier?.id?.toString() || '',
         minimum_stock: inventoryItem.minimum_stock.toString(),
         maximum_stock: inventoryItem.maximum_stock?.toString() || '',
         unit_of_measure: inventoryItem.unit_of_measure,
@@ -99,27 +82,28 @@ export default function Edit({
         { value: 'boxes', label: 'Boxes' },
         { value: 'cans', label: 'Cans' },
         { value: 'bottles', label: 'Bottles' },
+        { value: 'packs', label: 'Packs' },
     ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit ${inventoryItem.name} - Inventory`} />
 
-            <div className="p-6">
+            <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h1 className="flex items-center text-3xl font-bold text-gray-900">
-                            <Package className="mr-3 h-8 w-8 text-blue-600" />
+                        <h1 className="flex items-center text-3xl font-bold text-black dark:text-white">
+                            <Package className="mr-3 h-8 w-8 text-red-600 dark:text-red-400" />
                             Edit {inventoryItem.name}
                         </h1>
-                        <p className="text-gray-600">
+                        <p className="font-medium text-gray-600 dark:text-gray-400">
                             Update inventory item details and settings
                         </p>
                     </div>
                     <a
                         href={`/inventory/${inventoryItem.id}`}
-                        className="flex items-center space-x-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                        className="flex items-center space-x-2 rounded-lg border-2 border-gray-300 px-4 py-2 font-bold text-gray-700 shadow-md transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         <span>Back to Item</span>
@@ -131,13 +115,13 @@ export default function Edit({
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Basic Information */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Basic Information
                                 </h2>
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             Item Name *
                                         </label>
                                         <input
@@ -146,19 +130,19 @@ export default function Edit({
                                             onChange={(e) =>
                                                 setData('name', e.target.value)
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             placeholder="e.g., Chicken Breast"
                                             required
                                         />
                                         {errors.name && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.name}
                                             </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             SKU
                                         </label>
                                         <input
@@ -167,21 +151,21 @@ export default function Edit({
                                             onChange={(e) =>
                                                 setData('sku', e.target.value)
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black opacity-50 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             disabled
                                         />
-                                        <p className="mt-1 text-xs text-gray-500">
+                                        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                             SKU cannot be changed after creation
                                         </p>
                                         {errors.sku && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.sku}
                                             </p>
                                         )}
                                     </div>
 
                                     <div className="md:col-span-2">
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             Description
                                         </label>
                                         <textarea
@@ -193,18 +177,18 @@ export default function Edit({
                                                 )
                                             }
                                             rows={3}
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             placeholder="Brief description of the item..."
                                         />
                                         {errors.description && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.description}
                                             </p>
                                         )}
                                     </div>
 
-                                    <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                    <div className="md:col-span-2">
+                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             Category *
                                         </label>
                                         <select
@@ -215,7 +199,7 @@ export default function Edit({
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             required
                                         >
                                             <option value="">
@@ -231,41 +215,8 @@ export default function Edit({
                                             ))}
                                         </select>
                                         {errors.category_id && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.category_id}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
-                                            Supplier
-                                        </label>
-                                        <select
-                                            value={data.supplier_id}
-                                            onChange={(e) =>
-                                                setData(
-                                                    'supplier_id',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-                                        >
-                                            <option value="">
-                                                Select Supplier
-                                            </option>
-                                            {suppliers.map((supplier) => (
-                                                <option
-                                                    key={supplier.id}
-                                                    value={supplier.id}
-                                                >
-                                                    {supplier.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.supplier_id && (
-                                            <p className="mt-1 text-sm text-red-600">
-                                                {errors.supplier_id}
                                             </p>
                                         )}
                                     </div>
@@ -273,25 +224,25 @@ export default function Edit({
                             </div>
 
                             {/* Stock Settings */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Stock Settings
                                 </h2>
                                 <div className="space-y-4">
-                                    <div className="rounded-lg bg-blue-50 p-4">
-                                        <p className="text-sm text-blue-800">
+                                    <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/20">
+                                        <p className="text-sm font-bold text-blue-800 dark:text-blue-200">
                                             <strong>Note:</strong> Current stock
                                             level ({inventoryItem.current_stock}{' '}
                                             {inventoryItem.unit_of_measure})
                                             cannot be changed here. Use "Add
-                                            Stock" or "Adjust Stock" on the item
+                                            Stock" or "Use Stock" on the item
                                             view page.
                                         </p>
                                     </div>
 
                                     <div className="grid gap-4 md:grid-cols-3">
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                                            <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                                 Minimum Stock *
                                             </label>
                                             <input
@@ -305,22 +256,22 @@ export default function Edit({
                                                         e.target.value,
                                                     )
                                                 }
-                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                                className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                 placeholder="0.00"
                                                 required
                                             />
                                             {errors.minimum_stock && (
-                                                <p className="mt-1 text-sm text-red-600">
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                     {errors.minimum_stock}
                                                 </p>
                                             )}
-                                            <p className="mt-1 text-xs text-gray-500">
+                                            <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                                 Alert threshold for low stock
                                             </p>
                                         </div>
 
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                                            <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                                 Maximum Stock
                                             </label>
                                             <input
@@ -334,18 +285,18 @@ export default function Edit({
                                                         e.target.value,
                                                     )
                                                 }
-                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                                className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                 placeholder="Optional"
                                             />
                                             {errors.maximum_stock && (
-                                                <p className="mt-1 text-sm text-red-600">
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                     {errors.maximum_stock}
                                                 </p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                                            <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                                 Unit of Measure *
                                             </label>
                                             <select
@@ -356,7 +307,7 @@ export default function Edit({
                                                         e.target.value,
                                                     )
                                                 }
-                                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                                className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                                 required
                                             >
                                                 {unitOptions.map((unit) => (
@@ -369,7 +320,7 @@ export default function Edit({
                                                 ))}
                                             </select>
                                             {errors.unit_of_measure && (
-                                                <p className="mt-1 text-sm text-red-600">
+                                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                     {errors.unit_of_measure}
                                                 </p>
                                             )}
@@ -387,9 +338,9 @@ export default function Edit({
                                                         e.target.checked,
                                                     )
                                                 }
-                                                className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                className="mr-2 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700"
                                             />
-                                            <span className="text-sm text-gray-700">
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                                 Track stock levels for this item
                                             </span>
                                         </label>
@@ -398,13 +349,13 @@ export default function Edit({
                             </div>
 
                             {/* Cost Information */}
-                            <div className="rounded-lg border border-gray-200 bg-white p-6">
-                                <h2 className="mb-4 text-lg font-semibold">
+                            <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Cost Information
                                 </h2>
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             Unit Cost (KES) *
                                         </label>
                                         <input
@@ -418,22 +369,22 @@ export default function Edit({
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             placeholder="0.00"
                                             required
                                         />
                                         {errors.unit_cost && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.unit_cost}
                                             </p>
                                         )}
-                                        <p className="mt-1 text-xs text-gray-500">
+                                        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                             Cost per unit of measure
                                         </p>
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             Selling Price (KES)
                                         </label>
                                         <input
@@ -447,15 +398,15 @@ export default function Edit({
                                                     e.target.value,
                                                 )
                                             }
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             placeholder="Optional"
                                         />
                                         {errors.selling_price && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.selling_price}
                                             </p>
                                         )}
-                                        <p className="mt-1 text-xs text-gray-500">
+                                        <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                             If sold directly to customers
                                         </p>
                                     </div>
@@ -467,7 +418,7 @@ export default function Edit({
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="flex items-center space-x-2 rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex items-center space-x-2 rounded-lg bg-red-600 px-6 py-3 font-bold text-white shadow-md transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-500 dark:hover:bg-red-600"
                                 >
                                     <Save className="h-4 w-4" />
                                     <span>
@@ -479,7 +430,7 @@ export default function Edit({
 
                                 <a
                                     href={`/inventory/${inventoryItem.id}`}
-                                    className="flex items-center space-x-2 rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50"
+                                    className="flex items-center space-x-2 rounded-lg border-2 border-gray-300 px-6 py-3 font-bold text-gray-700 shadow-md transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                                 >
                                     <X className="h-4 w-4" />
                                     <span>Cancel</span>
@@ -491,26 +442,26 @@ export default function Edit({
                     {/* Sidebar Info */}
                     <div className="space-y-6">
                         {/* Current Item Info */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
-                            <h3 className="font-semibold text-gray-900">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h3 className="font-bold text-black dark:text-white">
                                 Current Item Status
                             </h3>
                             <div className="mt-2 space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         Current Stock:
                                     </span>
-                                    <span className="font-medium">
+                                    <span className="font-bold text-black dark:text-white">
                                         {inventoryItem.current_stock}{' '}
                                         {inventoryItem.unit_of_measure}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         Stock Value:
                                     </span>
-                                    <span className="font-medium">
-                                        KSh{' '}
+                                    <span className="font-bold text-black dark:text-white">
+                                        KES{' '}
                                         {(
                                             inventoryItem.current_stock *
                                             inventoryItem.unit_cost
@@ -518,11 +469,11 @@ export default function Edit({
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">
+                                    <span className="font-medium text-gray-600 dark:text-gray-400">
                                         Current Category:
                                     </span>
                                     <span
-                                        className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium"
+                                        className="inline-flex items-center rounded-full px-2 py-1 text-xs font-bold"
                                         style={{
                                             backgroundColor:
                                                 inventoryItem.category.color +
@@ -537,11 +488,11 @@ export default function Edit({
                         </div>
 
                         {/* Edit Notes */}
-                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                            <h3 className="font-semibold text-yellow-900">
+                        <div className="rounded-lg border-2 border-yellow-200 bg-yellow-50 p-4 shadow-lg dark:border-yellow-700 dark:bg-yellow-900/20">
+                            <h3 className="font-bold text-yellow-900 dark:text-yellow-200">
                                 Edit Guidelines
                             </h3>
-                            <ul className="mt-2 space-y-1 text-sm text-yellow-700">
+                            <ul className="mt-2 space-y-1 text-sm font-medium text-yellow-700 dark:text-yellow-300">
                                 <li>• SKU cannot be changed after creation</li>
                                 <li>• Current stock is managed separately</li>
                                 <li>
@@ -552,8 +503,8 @@ export default function Edit({
                         </div>
 
                         {/* Categories Available */}
-                        <div className="rounded-lg border border-gray-200 bg-white p-4">
-                            <h3 className="font-semibold text-gray-900">
+                        <div className="rounded-lg border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                            <h3 className="font-bold text-black dark:text-white">
                                 Categories Available
                             </h3>
                             <div className="mt-2 space-y-1">
@@ -568,7 +519,9 @@ export default function Edit({
                                                 backgroundColor: category.color,
                                             }}
                                         />
-                                        {category.name}
+                                        <span className="font-medium text-black dark:text-white">
+                                            {category.name}
+                                        </span>
                                     </div>
                                 ))}
                             </div>

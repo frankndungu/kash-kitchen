@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { Info, Package, Plus, Save, X, Zap } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -21,28 +21,25 @@ interface Category {
     color: string;
 }
 
-interface Supplier {
-    id: number;
-    name: string;
-    contact_person: string;
-}
-
 interface CreateProps {
     user: {
         name: string;
         email: string;
     };
     categories: Category[];
-    suppliers: Supplier[];
+    newCategory?: {
+        id: number;
+        name: string;
+        color: string;
+    };
 }
 
-export default function Create({ user, categories, suppliers }: CreateProps) {
+export default function Create({ user, categories, newCategory }: CreateProps) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         sku: '',
         description: '',
         category_id: '',
-        supplier_id: '',
         current_stock: '',
         minimum_stock: '',
         maximum_stock: '',
@@ -53,103 +50,50 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
         storage_requirements: [],
     });
 
-    // State for modals and dynamic data
-    const [categoriesList, setCategoriesList] = useState(categories);
-    const [suppliersList, setSuppliersList] = useState(suppliers);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
-    const [showSupplierModal, setShowSupplierModal] = useState(false);
-    const [categoryLoading, setCategoryLoading] = useState(false);
-    const [supplierLoading, setSupplierLoading] = useState(false);
-
-    // Category creation state
-    const [categoryForm, setCategoryForm] = useState({
+    // Category creation form
+    const {
+        data: categoryData,
+        setData: setCategoryData,
+        post: postCategory,
+        processing: categoryProcessing,
+        errors: categoryErrors,
+        reset: resetCategory,
+    } = useForm({
         name: '',
         description: '',
         color: '#10B981',
     });
 
-    // Supplier creation state
-    const [supplierForm, setSupplierForm] = useState({
-        name: '',
-        contact_person: '',
-        email: '',
-        phone: '',
-    });
+    // State for modals and dynamic data
+    const [categoriesList, setCategoriesList] = useState(categories);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+    // Handle new category from backend
+    useEffect(() => {
+        if (newCategory) {
+            setCategoriesList([...categoriesList, newCategory]);
+            setData('category_id', newCategory.id.toString());
+            setShowCategoryModal(false);
+            resetCategory();
+        }
+    }, [newCategory]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         post('/inventory');
     };
 
-    // Create new category
-    const handleCreateCategory = async (e: React.FormEvent) => {
+    // Create new category using Inertia
+    const handleCreateCategory = (e: React.FormEvent) => {
         e.preventDefault();
-        setCategoryLoading(true);
-        try {
-            const response = await fetch('/api/inventory-categories', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-                body: JSON.stringify(categoryForm),
-            });
-
-            if (response.ok) {
-                const newCategory = await response.json();
-                setCategoriesList([...categoriesList, newCategory]);
-                setData('category_id', newCategory.id.toString());
-                setShowCategoryModal(false);
-                setCategoryForm({
-                    name: '',
-                    description: '',
-                    color: '#10B981',
-                });
-            }
-        } catch (error) {
-            console.error('Failed to create category:', error);
-        } finally {
-            setCategoryLoading(false);
-        }
-    };
-
-    // Create new supplier
-    const handleCreateSupplier = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSupplierLoading(true);
-        try {
-            const response = await fetch('/api/suppliers', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN':
-                        document
-                            .querySelector('meta[name="csrf-token"]')
-                            ?.getAttribute('content') || '',
-                },
-                body: JSON.stringify(supplierForm),
-            });
-
-            if (response.ok) {
-                const newSupplier = await response.json();
-                setSuppliersList([...suppliersList, newSupplier]);
-                setData('supplier_id', newSupplier.id.toString());
-                setShowSupplierModal(false);
-                setSupplierForm({
-                    name: '',
-                    contact_person: '',
-                    email: '',
-                    phone: '',
-                });
-            }
-        } catch (error) {
-            console.error('Failed to create supplier:', error);
-        } finally {
-            setSupplierLoading(false);
-        }
+        postCategory('/inventory/create-category', {
+            onSuccess: () => {
+                // Modal will close and form will update via useEffect
+            },
+            onError: (errors) => {
+                console.error('Category creation failed:', errors);
+            },
+        });
     };
 
     const colorOptions = [
@@ -382,7 +326,7 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                         )}
                                     </div>
 
-                                    <div>
+                                    <div className="md:col-span-2">
                                         <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                             Category *
                                         </label>
@@ -426,53 +370,6 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                         {errors.category_id && (
                                             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                                                 {errors.category_id}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
-                                            Supplier
-                                        </label>
-                                        <div className="flex space-x-2">
-                                            <select
-                                                value={data.supplier_id}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        'supplier_id',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                className="flex-1 rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                            >
-                                                <option value="">
-                                                    Select Supplier
-                                                </option>
-                                                {suppliersList.map(
-                                                    (supplier) => (
-                                                        <option
-                                                            key={supplier.id}
-                                                            value={supplier.id}
-                                                        >
-                                                            {supplier.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setShowSupplierModal(true)
-                                                }
-                                                className="rounded-lg bg-green-600 px-3 py-2 text-white transition-colors hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
-                                                title="Create New Supplier"
-                                            >
-                                                <Plus className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                        {errors.supplier_id && (
-                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                                                {errors.supplier_id}
                                             </p>
                                         )}
                                     </div>
@@ -785,8 +682,8 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                     </div>
                                 </div>
                                 <p className="mt-3 text-xs font-medium opacity-75">
-                                    Categories and suppliers can be created
-                                    on-the-fly
+                                    Categories can be created on-the-fly using
+                                    the + button
                                 </p>
                             </div>
                         </div>
@@ -805,9 +702,7 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                 <li>
                                     • SKU will be auto-generated if left empty
                                 </li>
-                                <li>
-                                    • Click + to create new categories/suppliers
-                                </li>
+                                <li>• Click + to create new categories</li>
                                 <li>
                                     • Auto-deduction works regardless of
                                     category
@@ -868,17 +763,22 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                     </label>
                                     <input
                                         type="text"
-                                        value={categoryForm.name}
+                                        value={categoryData.name}
                                         onChange={(e) =>
-                                            setCategoryForm({
-                                                ...categoryForm,
-                                                name: e.target.value,
-                                            })
+                                            setCategoryData(
+                                                'name',
+                                                e.target.value,
+                                            )
                                         }
                                         className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         placeholder="e.g., Premium Ingredients"
                                         required
                                     />
+                                    {categoryErrors.name && (
+                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                                            {categoryErrors.name}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -886,17 +786,22 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                         Description
                                     </label>
                                     <textarea
-                                        value={categoryForm.description}
+                                        value={categoryData.description}
                                         onChange={(e) =>
-                                            setCategoryForm({
-                                                ...categoryForm,
-                                                description: e.target.value,
-                                            })
+                                            setCategoryData(
+                                                'description',
+                                                e.target.value,
+                                            )
                                         }
                                         rows={3}
                                         className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         placeholder="Brief description..."
                                     />
+                                    {categoryErrors.description && (
+                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                                            {categoryErrors.description}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -904,12 +809,12 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                         Color
                                     </label>
                                     <select
-                                        value={categoryForm.color}
+                                        value={categoryData.color}
                                         onChange={(e) =>
-                                            setCategoryForm({
-                                                ...categoryForm,
-                                                color: e.target.value,
-                                            })
+                                            setCategoryData(
+                                                'color',
+                                                e.target.value,
+                                            )
                                         }
                                         className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                     >
@@ -922,15 +827,20 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                             </option>
                                         ))}
                                     </select>
+                                    {categoryErrors.color && (
+                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                                            {categoryErrors.color}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="flex space-x-3">
                                     <button
                                         type="submit"
-                                        disabled={categoryLoading}
+                                        disabled={categoryProcessing}
                                         className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        {categoryLoading
+                                        {categoryProcessing
                                             ? 'Creating...'
                                             : 'Create Category'}
                                     </button>
@@ -938,124 +848,6 @@ export default function Create({ user, categories, suppliers }: CreateProps) {
                                         type="button"
                                         onClick={() =>
                                             setShowCategoryModal(false)
-                                        }
-                                        className="rounded-lg border-2 border-gray-300 px-4 py-2 font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                {/* Supplier Creation Modal */}
-                {showSupplierModal && (
-                    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black">
-                        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-black dark:text-white">
-                                    Create New Supplier
-                                </h3>
-                                <button
-                                    onClick={() => setShowSupplierModal(false)}
-                                    className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-
-                            <form
-                                onSubmit={handleCreateSupplier}
-                                className="space-y-4"
-                            >
-                                <div>
-                                    <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        Supplier Name *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={supplierForm.name}
-                                        onChange={(e) =>
-                                            setSupplierForm({
-                                                ...supplierForm,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        placeholder="e.g., Fresh Foods Ltd"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        Contact Person
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={supplierForm.contact_person}
-                                        onChange={(e) =>
-                                            setSupplierForm({
-                                                ...supplierForm,
-                                                contact_person: e.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        placeholder="Contact person name"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={supplierForm.email}
-                                        onChange={(e) =>
-                                            setSupplierForm({
-                                                ...supplierForm,
-                                                email: e.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        placeholder="supplier@example.com"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
-                                        Phone
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={supplierForm.phone}
-                                        onChange={(e) =>
-                                            setSupplierForm({
-                                                ...supplierForm,
-                                                phone: e.target.value,
-                                            })
-                                        }
-                                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        placeholder="+254 123 456789"
-                                    />
-                                </div>
-
-                                <div className="flex space-x-3">
-                                    <button
-                                        type="submit"
-                                        disabled={supplierLoading}
-                                        className="flex-1 rounded-lg bg-green-600 px-4 py-2 font-bold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                        {supplierLoading
-                                            ? 'Creating...'
-                                            : 'Create Supplier'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowSupplierModal(false)
                                         }
                                         className="rounded-lg border-2 border-gray-300 px-4 py-2 font-bold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                                     >

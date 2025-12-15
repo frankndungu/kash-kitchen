@@ -20,16 +20,12 @@ class InventoryController extends Controller
         $user = $request->user();
         
         // Get inventory items with enhanced data including stock movements
-        $query = InventoryItem::with(['category', 'supplier'])
+        $query = InventoryItem::with(['category'])
                               ->where('is_active', true);
 
         // Apply filters
         if ($request->filled('category')) {
             $query->where('category_id', $request->category);
-        }
-
-        if ($request->filled('supplier')) {
-            $query->where('supplier_id', $request->supplier);
         }
 
         if ($request->filled('status')) {
@@ -73,25 +69,19 @@ class InventoryController extends Controller
         // Get comprehensive statistics
         $stats = $this->calculateComprehensiveStats();
 
-        // Get top suppliers by value
-        $topSuppliers = $this->getTopSuppliers();
-
         // Get low stock items for alerts
         $lowStockItems = $this->getLowStockItems();
 
-        // Get all categories and suppliers for filters
+        // Get all categories for filters
         $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
-        $suppliers = $this->getSuppliersWithCounts();
 
         return Inertia::render('inventory/index', [
             'user' => ['name' => $user->name, 'email' => $user->email],
             'inventoryItems' => $inventoryItems,
             'categories' => $categories,
-            'suppliers' => $suppliers,
             'stats' => $stats,
-            'topSuppliers' => $topSuppliers,
             'lowStockItems' => $lowStockItems,
-            'filters' => $request->only(['category', 'status', 'search', 'supplier']),
+            'filters' => $request->only(['category', 'status', 'search']),
         ]);
     }
 
@@ -209,8 +199,6 @@ class InventoryController extends Controller
                                     ->selectRaw('AVG((current_stock / maximum_stock) * 100) as avg')
                                     ->value('avg') ?? 0;
 
-        $totalSuppliers = Supplier::where('is_active', true)->count();
-
         return [
             'total_items' => $totalItems,
             'low_stock_items' => $lowStockItems,
@@ -218,58 +206,7 @@ class InventoryController extends Controller
             'total_value' => $totalValue,
             'auto_deduct_items' => $autoDeductItems,
             'avg_stock_level' => $avgStockLevel,
-            'total_suppliers' => $totalSuppliers,
         ];
-    }
-
-    /**
-     * Get top suppliers by total inventory value
-     */
-    private function getTopSuppliers()
-    {
-        return Supplier::where('is_active', true)
-            ->with(['inventoryItems' => function ($query) {
-                $query->where('is_active', true);
-            }])
-            ->get()
-            ->map(function ($supplier) {
-                $totalValue = $supplier->inventoryItems->sum(function ($item) {
-                    return $item->current_stock * $item->unit_cost;
-                });
-
-                return [
-                    'name' => $supplier->name,
-                    'items_count' => $supplier->inventoryItems->count(),
-                    'total_value' => $totalValue,
-                ];
-            })
-            ->sortByDesc('total_value')
-            ->take(10) // Show more suppliers including those with no items
-            ->values()
-            ->toArray();
-    }
-
-    /**
-     * Get suppliers with item counts for filters
-     */
-    private function getSuppliersWithCounts()
-    {
-        return Supplier::where('is_active', true)
-            ->withCount(['inventoryItems' => function ($query) {
-                $query->where('is_active', true);
-            }])
-            ->orderBy('name')
-            ->get()
-            ->filter(function ($supplier) {
-                return $supplier->inventory_items_count > 0; // Filter in PHP instead of SQL
-            })
-            ->map(function ($supplier) {
-                return [
-                    'id' => $supplier->id,
-                    'name' => $supplier->name,
-                    'items_count' => $supplier->inventory_items_count,
-                ];
-            });
     }
 
     /**
@@ -309,12 +246,11 @@ class InventoryController extends Controller
         $user = $request->user();
         
         $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
-        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('inventory/create', [
             'user' => ['name' => $user->name, 'email' => $user->email],
             'categories' => $categories,
-            'suppliers' => $suppliers,
+            'newCategory' => session('newCategory'), // Pass flash data if available
         ]);
     }
 
@@ -325,7 +261,6 @@ class InventoryController extends Controller
             'sku' => 'nullable|string|unique:inventory_items,sku',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:inventory_categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'current_stock' => 'required|numeric|min:0',
             'minimum_stock' => 'required|numeric|min:0',
             'maximum_stock' => 'nullable|numeric|min:0',
@@ -356,7 +291,6 @@ class InventoryController extends Controller
                     'new_stock' => $validatedData['current_stock'],
                     'reason' => 'initial_stock',
                     'notes' => 'Initial stock entry',
-                    'supplier_id' => $validatedData['supplier_id'] ?? null,
                     'created_by' => $request->user()->id,
                     'movement_date' => now(),
                 ]);
@@ -477,7 +411,7 @@ class InventoryController extends Controller
     {
         $user = $request->user();
         
-        $inventoryItem->load(['category', 'supplier', 'creator']);
+        $inventoryItem->load(['category', 'creator']);
         
         // Get linked menu items with their usage quantities
         $linkedMenuItems = collect();
@@ -499,7 +433,7 @@ class InventoryController extends Controller
         
         // Get recent stock movements
         $stockMovements = StockMovement::where('inventory_item_id', $inventoryItem->id)
-                                     ->with(['supplier', 'creator'])
+                                     ->with(['creator'])
                                      ->latest('movement_date')
                                      ->paginate(20);
 
@@ -533,13 +467,11 @@ class InventoryController extends Controller
         $user = $request->user();
         
         $categories = InventoryCategory::where('is_active', true)->orderBy('name')->get();
-        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('inventory/edit', [
             'user' => ['name' => $user->name, 'email' => $user->email],
-            'inventoryItem' => $inventoryItem->load(['category', 'supplier']),
+            'inventoryItem' => $inventoryItem->load(['category']),
             'categories' => $categories,
-            'suppliers' => $suppliers,
         ]);
     }
 
@@ -550,7 +482,6 @@ class InventoryController extends Controller
             'sku' => 'nullable|string|unique:inventory_items,sku,' . $inventoryItem->id,
             'description' => 'nullable|string',
             'category_id' => 'required|exists:inventory_categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'minimum_stock' => 'required|numeric|min:0',
             'maximum_stock' => 'nullable|numeric|min:0',
             'unit_of_measure' => 'required|string|max:20',
@@ -590,7 +521,6 @@ class InventoryController extends Controller
         $validatedData = $request->validate([
             'quantity' => 'required|numeric|min:0.01',
             'unit_cost' => 'required|numeric|min:0',
-            'supplier_id' => 'nullable|exists:suppliers,id',
             'batch_number' => 'nullable|string|max:50',
             'expiry_date' => 'nullable|date|after:today',
             'notes' => 'nullable|string|max:500',
@@ -611,7 +541,6 @@ class InventoryController extends Controller
                 'new_stock' => $newStock,
                 'reason' => 'purchase',
                 'notes' => $validatedData['notes'] ?? null,
-                'supplier_id' => $validatedData['supplier_id'] ?? null,
                 'batch_number' => $validatedData['batch_number'] ?? null,
                 'expiry_date' => $validatedData['expiry_date'] ?? null,
                 'created_by' => $request->user()->id,
@@ -703,7 +632,7 @@ class InventoryController extends Controller
         
         $lowStockItems = InventoryItem::where('is_active', true)
                                     ->whereColumn('current_stock', '<=', 'minimum_stock')
-                                    ->with(['category', 'supplier'])
+                                    ->with(['category'])
                                     ->orderBy('current_stock', 'asc')
                                     ->get();
 
@@ -711,28 +640,6 @@ class InventoryController extends Controller
             'user' => ['name' => $user->name, 'email' => $user->email],
             'lowStockItems' => $lowStockItems,
         ]);
-    }
-
-    /**
-     * Get suppliers with item counts for filters
-     */
-    public function getSuppliers(Request $request)
-    {
-        $suppliers = Supplier::where('is_active', true)
-            ->withCount(['inventoryItems' => function ($query) {
-                $query->where('is_active', true);
-            }])
-            ->orderBy('name')
-            ->get()
-            ->map(function ($supplier) {
-                return [
-                    'id' => $supplier->id,
-                    'name' => $supplier->name,
-                    'items_count' => $supplier->inventory_items_count,
-                ];
-            });
-
-        return response()->json($suppliers);
     }
 
     /**
@@ -752,6 +659,49 @@ class InventoryController extends Controller
             });
 
         return response()->json($categories);
+    }
+
+    /**
+     * Create a new inventory category via Inertia
+     */
+    public function createCategory(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255|unique:inventory_categories,name',
+            'description' => 'nullable|string|max:500',
+            'color' => 'required|string|max:7', // Hex color code
+        ]);
+
+        try {
+            $category = InventoryCategory::create([
+                'name' => $validatedData['name'],
+                'description' => $validatedData['description'] ?? null,
+                'color' => $validatedData['color'],
+                'slug' => \Illuminate\Support\Str::slug($validatedData['name']),
+                'is_active' => true,
+                'sort_order' => InventoryCategory::max('sort_order') + 1,
+            ]);
+
+            // Redirect back to create page with new category data
+            return redirect()->route('inventory.create')->with([
+                'success' => "Category '{$category->name}' created successfully!",
+                'newCategory' => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'color' => $category->color,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Category creation failed', [
+                'error' => $e->getMessage(),
+                'data' => $validatedData
+            ]);
+
+            return redirect()->back()
+                           ->withErrors(['category_error' => 'Failed to create category: ' . $e->getMessage()])
+                           ->withInput();
+        }
     }
 
     /**
