@@ -39,6 +39,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('pos/{order}', [POSController::class, 'destroy'])->name('pos.destroy');
         Route::get('pos/menu-items/{categoryId}', [POSController::class, 'getMenuItems'])->name('pos.menu-items');
         Route::post('pos/{order}/payment', [POSController::class, 'processPayment'])->name('pos.payment');
+
+        // Quick status update - PATCH route for form submission
+        Route::patch('pos/{order}/status', [POSController::class, 'updateOrderStatus'])->name('pos.updateStatus');
     });
 
     // Role Management - Admin only

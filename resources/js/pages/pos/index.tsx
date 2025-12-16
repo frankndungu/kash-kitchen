@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     CheckCircle,
     Clock,
@@ -12,6 +12,7 @@ import {
     ShoppingCart,
     XCircle,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -44,6 +45,11 @@ interface IndexProps {
         current_page: number;
         last_page: number;
         total: number;
+        links: Array<{
+            url: string | null;
+            label: string;
+            active: boolean;
+        }>;
     };
     filters: {
         status?: string;
@@ -52,12 +58,68 @@ interface IndexProps {
 }
 
 export default function Index({ user, orders, filters }: IndexProps) {
+    const [searchTerm, setSearchTerm] = useState(filters.search || '');
+    const [statusFilter, setStatusFilter] = useState(filters.status || '');
+
+    // Update local state when filters change (for page navigation)
+    useEffect(() => {
+        setSearchTerm(filters.search || '');
+        setStatusFilter(filters.status || '');
+    }, [filters.search, filters.status]);
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-KE', {
             style: 'currency',
             currency: 'KES',
             minimumFractionDigits: 0,
         }).format(amount);
+    };
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmedSearch = searchTerm.trim();
+
+        router.get(
+            '/pos',
+            {
+                search: trimmedSearch || undefined,
+                status: statusFilter || undefined,
+                page: 1, // Reset to first page
+            },
+            {
+                preserveState: false,
+                preserveScroll: false,
+            },
+        );
+    };
+
+    const handleStatusChange = (status: string) => {
+        setStatusFilter(status);
+        router.get(
+            '/pos',
+            {
+                search: searchTerm || undefined,
+                status: status || undefined,
+                page: 1, // Reset to first page
+            },
+            {
+                preserveState: false,
+                preserveScroll: false,
+            },
+        );
+    };
+
+    const clearFilters = () => {
+        router.get(
+            '/pos',
+            {},
+            {
+                preserveState: false,
+                preserveScroll: false,
+            },
+        );
+        setSearchTerm('');
+        setStatusFilter('');
     };
 
     const getStatusBadge = (status: string) => {
@@ -143,7 +205,7 @@ export default function Index({ user, orders, filters }: IndexProps) {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-bold tracking-wide text-gray-600 uppercase dark:text-gray-400">
-                                    Today's Orders
+                                    Total Orders
                                 </p>
                                 <p className="text-3xl font-bold text-black dark:text-white">
                                     {orders.total}
@@ -210,40 +272,94 @@ export default function Index({ user, orders, filters }: IndexProps) {
                     </div>
                 </div>
 
-                {/* Filter and Search */}
-                <div className="mb-6 flex flex-wrap items-center gap-4">
-                    <div className="flex items-center space-x-2">
-                        <Search className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search orders..."
-                            defaultValue={filters.search}
-                            className="rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black placeholder-gray-500 focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                        />
+                {/* Search and Filters */}
+                <div className="mb-6 space-y-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <form
+                            onSubmit={handleSearch}
+                            className="min-w-64 flex-1"
+                        >
+                            <div className="flex rounded-lg border-2 border-gray-300 bg-white shadow-md dark:border-gray-600 dark:bg-gray-800">
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) =>
+                                        setSearchTerm(e.target.value)
+                                    }
+                                    placeholder="Search by order number, customer name..."
+                                    className="flex-1 rounded-l-lg border-none bg-transparent px-4 py-2 text-black focus:ring-0 focus:outline-none dark:text-white"
+                                />
+                                <button
+                                    type="submit"
+                                    className="rounded-r-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                                >
+                                    <Search className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </form>
+
+                        <div className="flex items-center space-x-2">
+                            <Filter className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                            <select
+                                value={statusFilter}
+                                onChange={(e) =>
+                                    handleStatusChange(e.target.value)
+                                }
+                                className="rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="preparing">Preparing</option>
+                                <option value="ready">Ready</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+
+                        {(filters.status || filters.search) && (
+                            <button
+                                onClick={clearFilters}
+                                className="rounded-lg bg-red-100 px-3 py-2 text-sm font-bold text-red-800 transition-colors hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300"
+                            >
+                                Clear Filters
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                        <Filter className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                        <select
-                            defaultValue={filters.status}
-                            className="rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-black focus:border-red-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        >
-                            <option value="">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="preparing">Preparing</option>
-                            <option value="ready">Ready</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
+                    {/* Show current search and filter info */}
+                    {(filters.search || filters.status) && (
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {filters.search && (
+                                <span>
+                                    Searching for:{' '}
+                                    <strong>"{filters.search}"</strong>
+                                </span>
+                            )}
+                            {filters.search && filters.status && (
+                                <span> | </span>
+                            )}
+                            {filters.status && (
+                                <span>
+                                    Status:{' '}
+                                    <strong className="capitalize">
+                                        {filters.status}
+                                    </strong>
+                                </span>
+                            )}
+                            <span className="ml-2">
+                                ({orders.total} result
+                                {orders.total !== 1 ? 's' : ''})
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Orders Table */}
                 <div className="overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
                         <h2 className="text-lg font-bold text-white">
-                            Recent Orders
+                            Orders ({orders.total} total)
                         </h2>
                     </div>
 
@@ -267,10 +383,7 @@ export default function Index({ user, orders, filters }: IndexProps) {
                                         Amount
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
-                                        Payment Method
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
-                                        Payment Status
+                                        Payment
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-bold tracking-wider text-gray-600 uppercase dark:text-gray-300">
                                         Transaction ID
@@ -284,167 +397,272 @@ export default function Index({ user, orders, filters }: IndexProps) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                {orders.data.map((order) => (
-                                    <tr
-                                        key={order.id}
-                                        className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div>
-                                                <div className="font-bold text-black dark:text-white">
-                                                    #{order.order_number}
-                                                </div>
-                                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    {order.items_count} items
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-black dark:text-white">
-                                                {order.customer_name ||
-                                                    'Walk-in'}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm font-medium text-black capitalize dark:text-white">
-                                                {order.order_type.replace(
-                                                    '_',
-                                                    ' ',
-                                                )}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`inline-flex items-center space-x-1 rounded-full px-3 py-1 text-xs font-bold ${getStatusBadge(order.order_status)}`}
-                                            >
-                                                {getStatusIcon(
-                                                    order.order_status,
-                                                )}
-                                                <span className="capitalize">
-                                                    {order.order_status}
-                                                </span>
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-bold text-red-600 dark:text-red-400">
-                                                {formatCurrency(
-                                                    order.total_amount,
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="text-sm font-medium text-black capitalize dark:text-white">
-                                                {order.payment_method}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${getPaymentStatusBadge(order.payment_status)}`}
-                                            >
-                                                {order.payment_status ===
-                                                    'paid' && (
-                                                    <CheckCircle className="mr-1 h-3 w-3" />
-                                                )}
-                                                {order.payment_status ===
-                                                    'pending' && (
-                                                    <Clock className="mr-1 h-3 w-3" />
-                                                )}
-                                                <span className="capitalize">
-                                                    {order.payment_status}
-                                                </span>
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                {order.mpesa_reference ? (
-                                                    <div className="rounded bg-gray-100 px-2 py-1 font-mono font-medium dark:bg-gray-700">
-                                                        {order.mpesa_reference}
+                                {orders.data.length > 0 ? (
+                                    orders.data.map((order) => (
+                                        <tr
+                                            key={order.id}
+                                            className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        >
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div>
+                                                    <div className="font-bold text-black dark:text-white">
+                                                        #{order.order_number}
                                                     </div>
-                                                ) : (
-                                                    <span className="text-gray-400 dark:text-gray-500">
-                                                        —
+                                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                        {order.items_count}{' '}
+                                                        items
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-medium text-black dark:text-white">
+                                                    {order.customer_name ||
+                                                        'Walk-in'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="text-sm font-medium text-black capitalize dark:text-white">
+                                                    {order.order_type.replace(
+                                                        '_',
+                                                        ' ',
+                                                    )}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {/* Quick Status Update Form */}
+                                                <form
+                                                    onSubmit={(e) => {
+                                                        e.preventDefault();
+                                                        const form =
+                                                            e.target as HTMLFormElement;
+                                                        const formData =
+                                                            new FormData(form);
+                                                        const newStatus =
+                                                            formData.get(
+                                                                'order_status',
+                                                            ) as string;
+
+                                                        if (
+                                                            newStatus !==
+                                                            order.order_status
+                                                        ) {
+                                                            router.patch(
+                                                                `/pos/${order.id}/status`,
+                                                                {
+                                                                    order_status:
+                                                                        newStatus,
+                                                                },
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    <select
+                                                        name="order_status"
+                                                        defaultValue={
+                                                            order.order_status
+                                                        }
+                                                        onChange={(e) => {
+                                                            const form =
+                                                                e.target.closest(
+                                                                    'form',
+                                                                ) as HTMLFormElement;
+                                                            if (form)
+                                                                form.requestSubmit();
+                                                        }}
+                                                        className={`w-full cursor-pointer rounded-full border px-3 py-1 text-xs font-bold focus:ring-2 focus:ring-red-500 focus:outline-none ${getStatusBadge(order.order_status)}`}
+                                                    >
+                                                        <option value="pending">
+                                                            Pending
+                                                        </option>
+                                                        <option value="confirmed">
+                                                            Confirmed
+                                                        </option>
+                                                        <option value="preparing">
+                                                            Preparing
+                                                        </option>
+                                                        <option value="ready">
+                                                            Ready
+                                                        </option>
+                                                        <option value="completed">
+                                                            Completed
+                                                        </option>
+                                                        <option value="cancelled">
+                                                            Cancelled
+                                                        </option>
+                                                    </select>
+                                                </form>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-bold text-red-600 dark:text-red-400">
+                                                    {formatCurrency(
+                                                        order.total_amount,
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-black capitalize dark:text-white">
+                                                        {order.payment_method}
+                                                    </div>
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-bold ${getPaymentStatusBadge(order.payment_status)}`}
+                                                    >
+                                                        {order.payment_status ===
+                                                            'paid' && (
+                                                            <CheckCircle className="mr-1 h-3 w-3" />
+                                                        )}
+                                                        {order.payment_status ===
+                                                            'pending' && (
+                                                            <Clock className="mr-1 h-3 w-3" />
+                                                        )}
+                                                        <span className="capitalize">
+                                                            {
+                                                                order.payment_status
+                                                            }
+                                                        </span>
                                                     </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-500 dark:text-gray-400">
-                                            {new Date(
-                                                order.created_at,
-                                            ).toLocaleTimeString('en-KE')}
-                                        </td>
-                                        <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
-                                            <div className="flex justify-end space-x-2">
-                                                <Link
-                                                    href={`/pos/${order.id}`}
-                                                    className="flex items-center text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                                    title="View Order"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Link>
-                                                <Link
-                                                    href={`/pos/${order.id}/edit`}
-                                                    className="flex items-center text-black transition-colors hover:text-red-600 dark:text-white dark:hover:text-red-400"
-                                                    title="Edit Order"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Link>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {order.mpesa_reference ? (
+                                                        <div className="max-w-32 truncate rounded bg-gray-100 px-2 py-1 font-mono font-medium dark:bg-gray-700">
+                                                            {
+                                                                order.mpesa_reference
+                                                            }
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 dark:text-gray-500">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                {new Date(
+                                                    order.created_at,
+                                                ).toLocaleTimeString('en-KE', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                })}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-sm font-medium whitespace-nowrap">
+                                                <div className="flex justify-end space-x-2">
+                                                    <Link
+                                                        href={`/pos/${order.id}`}
+                                                        className="flex items-center text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                                        title="View Order"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                    <Link
+                                                        href={`/pos/${order.id}/edit`}
+                                                        className="flex items-center text-black transition-colors hover:text-red-600 dark:text-white dark:hover:text-red-400"
+                                                        title="Edit Order"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Link>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td
+                                            colSpan={9}
+                                            className="px-6 py-12 text-center"
+                                        >
+                                            <div className="flex flex-col items-center space-y-3">
+                                                <ShoppingCart className="h-12 w-12 text-gray-400 dark:text-gray-600" />
+                                                <div>
+                                                    {filters.search ||
+                                                    filters.status ? (
+                                                        <>
+                                                            <p className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                                                                No orders found
+                                                            </p>
+                                                            <p className="text-sm text-gray-400 dark:text-gray-500">
+                                                                Try adjusting
+                                                                your search or
+                                                                filter criteria
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <p className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                                                                No orders found
+                                                            </p>
+                                                            <p className="text-sm text-gray-400 dark:text-gray-500">
+                                                                Create your
+                                                                first order to
+                                                                get started
+                                                            </p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {!filters.search &&
+                                                    !filters.status && (
+                                                        <Link
+                                                            href="/pos/create"
+                                                            className="inline-flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                                                        >
+                                                            <Plus className="h-4 w-4" />
+                                                            <span>
+                                                                New Order
+                                                            </span>
+                                                        </Link>
+                                                    )}
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
 
-                    {/* Empty State */}
-                    {orders.data.length === 0 && (
-                        <div className="py-12 text-center">
-                            <ShoppingCart className="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-600" />
-                            <p className="text-lg font-bold text-gray-500 dark:text-gray-400">
-                                No orders found
-                            </p>
-                            <p className="text-sm text-gray-400 dark:text-gray-500">
-                                Create your first order to get started
-                            </p>
-                            <Link
-                                href="/pos/create"
-                                className="mt-4 inline-flex items-center space-x-2 rounded-lg bg-red-600 px-4 py-2 font-bold text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span>New Order</span>
-                            </Link>
+                    {/* Standard Laravel Pagination */}
+                    {orders.last_page > 1 && (
+                        <div className="border-t-2 border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                    Showing page {orders.current_page} of{' '}
+                                    {orders.last_page}({orders.total} total
+                                    orders)
+                                </div>
+                                <div className="flex space-x-1">
+                                    {orders.links.map((link, index) => {
+                                        if (!link.url) {
+                                            return (
+                                                <span
+                                                    key={index}
+                                                    className="cursor-not-allowed rounded px-3 py-1 text-sm font-medium text-gray-400 dark:text-gray-600"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: link.label,
+                                                    }}
+                                                />
+                                            );
+                                        }
+
+                                        return (
+                                            <Link
+                                                key={index}
+                                                href={link.url}
+                                                className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+                                                    link.active
+                                                        ? 'bg-red-600 text-white dark:bg-red-500'
+                                                        : 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                }`}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: link.label,
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
-
-                {/* Pagination */}
-                {orders.last_page > 1 && (
-                    <div className="mt-6 flex items-center justify-between">
-                        <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                            Showing {orders.data.length} of {orders.total}{' '}
-                            orders
-                        </div>
-                        <div className="flex space-x-2">
-                            <button
-                                disabled={orders.current_page === 1}
-                                className="rounded-lg border-2 border-gray-300 px-3 py-1 text-sm font-medium text-black transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-                            >
-                                Previous
-                            </button>
-                            <span className="rounded-lg bg-red-600 px-3 py-1 text-sm font-bold text-white dark:bg-red-500">
-                                {orders.current_page}
-                            </span>
-                            <button
-                                disabled={
-                                    orders.current_page === orders.last_page
-                                }
-                                className="rounded-lg border-2 border-gray-300 px-3 py-1 text-sm font-medium text-black transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
         </AppLayout>
     );

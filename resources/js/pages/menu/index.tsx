@@ -3,7 +3,6 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Clock,
-    DollarSign,
     Edit,
     Eye,
     Package,
@@ -301,7 +300,6 @@ export default function MenuManagement({ categories, stats }: Props) {
                                                     </td>
                                                     <td className="px-6 py-4 text-sm whitespace-nowrap">
                                                         <div className="flex items-center">
-                                                            <DollarSign className="mr-1 h-4 w-4 text-red-600 dark:text-red-400" />
                                                             <span className="font-bold text-red-600 dark:text-red-400">
                                                                 {formatPrice(
                                                                     item.price,

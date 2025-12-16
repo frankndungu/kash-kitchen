@@ -16,23 +16,42 @@ class POSController extends Controller
     {
         $user = $request->user();
         
-        $orders = Order::with(['items.menuItem', 'creator'])
-                       ->withCount('items')
-                       ->select([
-                           'id',
-                           'order_number',
-                           'customer_name',
-                           'total_amount',
-                           'order_status',
-                           'order_type',
-                           'payment_method',
-                           'payment_status',
-                           'mpesa_reference',
-                           'created_at'
-                       ])
-                       ->latest()
-                       ->paginate(20);
+        // Build the query with proper filtering
+        $query = Order::with(['items.menuItem', 'creator'])
+                      ->withCount('items')
+                      ->select([
+                          'id',
+                          'order_number',
+                          'customer_name',
+                          'total_amount',
+                          'order_status',
+                          'order_type',
+                          'payment_method',
+                          'payment_status',
+                          'mpesa_reference',
+                          'created_at'
+                      ]);
+
+        // Apply status filter
+        if ($request->filled('status')) {
+            $query->where('order_status', $request->status);
+        }
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhere('mpesa_reference', 'like', "%{$search}%");
+            });
+        }
         
+        // Use paginate with 10 items per page and append query parameters
+        $orders = $query->latest()->paginate(10);
+        $orders->appends($request->query());
+        
+        // Transform the collection to ensure items_count is available
         $orders->getCollection()->transform(function ($order) {
             $order->items_count = $order->items_count;
             return $order;
@@ -43,6 +62,45 @@ class POSController extends Controller
             'orders' => $orders,
             'filters' => $request->only(['status', 'search']),
         ]);
+    }
+
+    /**
+     * Quick update order status (form-based, no AJAX)
+     */
+    public function updateOrderStatus(Request $request, Order $order)
+    {
+        $validatedData = $request->validate([
+            'order_status' => 'required|in:pending,confirmed,preparing,ready,completed,cancelled',
+        ]);
+
+        try {
+            $oldStatus = $order->order_status;
+            
+            $order->update([
+                'order_status' => $validatedData['order_status'],
+                'updated_by_user_id' => $request->user()->id,
+            ]);
+
+            \Log::info('Order status updated quickly', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'old_status' => $oldStatus,
+                'new_status' => $validatedData['order_status'],
+                'updated_by' => $request->user()->id,
+            ]);
+
+            return redirect()->back()
+                           ->with('success', "Order {$order->order_number} status updated to {$validatedData['order_status']}");
+
+        } catch (\Exception $e) {
+            \Log::error('Quick status update failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                           ->withErrors(['error' => 'Failed to update order status: ' . $e->getMessage()]);
+        }
     }
 
     public function create(Request $request)
