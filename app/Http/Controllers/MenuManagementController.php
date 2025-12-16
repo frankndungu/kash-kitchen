@@ -66,6 +66,9 @@ class MenuManagementController extends Controller
             $validatedData['sku'] = strtoupper(str_replace(' ', '_', $validatedData['name']));
         }
 
+        // Generate slug from name for the MenuItem
+        $validatedData['slug'] = Str::slug($validatedData['name']);
+
         MenuItem::create($validatedData);
 
         return redirect()->route('menu.index')
@@ -134,6 +137,11 @@ class MenuManagementController extends Controller
             'allergens' => 'nullable|array',
             'special_instructions' => 'nullable|string',
         ]);
+
+        // Update slug if name changed
+        if ($validatedData['name'] !== $menuItem->name) {
+            $validatedData['slug'] = Str::slug($validatedData['name']);
+        }
 
         $menuItem->update($validatedData);
 
