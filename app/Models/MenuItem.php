@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class MenuItem extends Model
 {
@@ -35,6 +36,42 @@ class MenuItem extends Model
         'allergens' => 'array',
         'preparation_time_minutes' => 'integer',
     ];
+
+    // Boot method to automatically generate slug
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($menuItem) {
+            if (empty($menuItem->slug)) {
+                $menuItem->slug = static::generateUniqueSlug($menuItem->name);
+            }
+        });
+
+        static::updating(function ($menuItem) {
+            if ($menuItem->isDirty('name') && empty($menuItem->slug)) {
+                $menuItem->slug = static::generateUniqueSlug($menuItem->name);
+            }
+        });
+    }
+
+    /**
+     * Generate a unique slug for the menu item
+     */
+    protected static function generateUniqueSlug(string $name): string
+    {
+        $baseSlug = Str::slug($name);
+        $slug = $baseSlug;
+        $counter = 1;
+
+        // Check if slug already exists and make it unique
+        while (static::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
 
     // Relationships
     public function category(): BelongsTo
