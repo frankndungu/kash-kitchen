@@ -19,8 +19,7 @@ class DatabaseSeeder extends Seeder
             MenuItemSeeder::class,
             UserSeeder::class,
             InventoryCategorySeeder::class,
-            SupplierSeeder::class,
-            MenuItemIngredientsSeeder::class,
+            CompleteMenuItemIngredientsSeeder::class,
         ]);
     }
 }
