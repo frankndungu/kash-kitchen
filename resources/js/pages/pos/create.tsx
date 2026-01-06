@@ -183,7 +183,6 @@ export default function CreateOrder({
             special_instructions: item.special_instructions,
         }));
 
-        // Submit using router.post to avoid TypeScript issues
         const formData = {
             order_type: data.order_type,
             customer_name: data.customer_name,
@@ -205,14 +204,13 @@ export default function CreateOrder({
     };
 
     const handlePayment = () => {
-        // Generate transaction ID for cash payments
         const transactionId =
             data.payment_method === 'cash'
                 ? `CASH-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-                : data.mpesa_reference;
+                : data.payment_method === 'grubba'
+                  ? `GRUBBA-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+                  : data.mpesa_reference;
 
-        // Update order with payment details
-        // This would be a separate API call to update payment status
         console.log('Processing payment:', {
             orderId: createdOrder?.id,
             paymentMethod: data.payment_method,
@@ -220,7 +218,6 @@ export default function CreateOrder({
             amount: calculateTotal(),
         });
 
-        // For demo purposes, we'll simulate payment success
         alert(
             `Payment processed successfully! Transaction ID: ${transactionId}`,
         );
@@ -254,7 +251,6 @@ export default function CreateOrder({
         (cat) => cat.id === selectedCategory,
     )?.name;
 
-    // If order is created, show payment interface
     if (orderCreated && createdOrder) {
         return (
             <AppLayout breadcrumbs={paymentBreadcrumbs}>
@@ -275,7 +271,6 @@ export default function CreateOrder({
                                 </p>
                             </div>
 
-                            {/* Order Summary */}
                             <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
                                 <h3 className="mb-3 font-bold text-black dark:text-white">
                                     Order Summary
@@ -307,7 +302,6 @@ export default function CreateOrder({
                                 </div>
                             </div>
 
-                            {/* Payment Method Selection */}
                             <div className="mb-6">
                                 <h3 className="mb-3 font-bold text-black dark:text-white">
                                     Payment Method
@@ -364,10 +358,35 @@ export default function CreateOrder({
                                             </p>
                                         </div>
                                     </label>
+
+                                    <label className="flex cursor-pointer items-center rounded-lg border-2 border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700">
+                                        <input
+                                            type="radio"
+                                            value="grubba"
+                                            checked={
+                                                data.payment_method === 'grubba'
+                                            }
+                                            onChange={(e) =>
+                                                setData(
+                                                    'payment_method',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="mr-3 text-red-600"
+                                        />
+                                        <div>
+                                            <p className="font-bold text-black dark:text-white">
+                                                Grubba Payment
+                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                Transaction ID will be generated
+                                                automatically
+                                            </p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
-                            {/* M-Pesa Transaction ID Input */}
                             {data.payment_method === 'mpesa' && (
                                 <div className="mb-6">
                                     <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
@@ -393,7 +412,6 @@ export default function CreateOrder({
                                 </div>
                             )}
 
-                            {/* Action Buttons */}
                             <div className="flex space-x-4">
                                 <button
                                     onClick={handlePayment}
@@ -425,9 +443,7 @@ export default function CreateOrder({
             <Head title="New Order" />
 
             <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-                {/* Main Menu Area */}
                 <div className="flex-1 p-6">
-                    {/* Header */}
                     <div className="mb-6 flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-black dark:text-white">
@@ -451,7 +467,6 @@ export default function CreateOrder({
                         )}
                     </div>
 
-                    {/* Categories or Menu Items */}
                     {!selectedCategory ? (
                         <div>
                             <h2 className="mb-4 text-xl font-bold text-black dark:text-white">
@@ -544,7 +559,6 @@ export default function CreateOrder({
                     )}
                 </div>
 
-                {/* Order Details Sidebar */}
                 <div className="w-96 border-l-2 border-gray-300 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                     <div className="mb-6 flex items-center">
                         <ShoppingCart className="mr-2 h-6 w-6 text-red-600 dark:text-red-400" />
@@ -554,7 +568,6 @@ export default function CreateOrder({
                     </div>
 
                     <form onSubmit={handleCreateOrder} className="space-y-4">
-                        {/* Order Type */}
                         <div>
                             <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                 Order Type
@@ -572,7 +585,6 @@ export default function CreateOrder({
                             </select>
                         </div>
 
-                        {/* Customer Details */}
                         <div>
                             <input
                                 type="text"
@@ -597,7 +609,6 @@ export default function CreateOrder({
                             />
                         </div>
 
-                        {/* Payment Method Selection */}
                         <div>
                             <label className="mb-2 block text-sm font-bold text-gray-700 dark:text-gray-300">
                                 Payment Method
@@ -641,10 +652,29 @@ export default function CreateOrder({
                                         M-Pesa Payment
                                     </span>
                                 </label>
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        value="grubba"
+                                        checked={
+                                            data.payment_method === 'grubba'
+                                        }
+                                        onChange={(e) =>
+                                            setData(
+                                                'payment_method',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mr-2 text-red-600"
+                                        required
+                                    />
+                                    <span className="text-sm font-medium text-black dark:text-white">
+                                        Grubba Payment
+                                    </span>
+                                </label>
                             </div>
                         </div>
 
-                        {/* Cart Items */}
                         <div className="border-t-2 border-gray-200 pt-4 dark:border-gray-700">
                             <h3 className="mb-3 font-bold text-black dark:text-white">
                                 Order Items
@@ -706,7 +736,6 @@ export default function CreateOrder({
                                 </div>
                             )}
 
-                            {/* Total */}
                             {cart.length > 0 && (
                                 <div className="mt-4 border-t-2 border-gray-300 pt-4 dark:border-gray-600">
                                     <div className="flex items-center justify-between text-xl font-bold">
@@ -721,7 +750,6 @@ export default function CreateOrder({
                             )}
                         </div>
 
-                        {/* Submit Button */}
                         <button
                             type="submit"
                             disabled={cart.length === 0 || processing}

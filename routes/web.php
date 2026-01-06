@@ -24,9 +24,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Dashboard - All authenticated users can access
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // Sales - All authenticated users can access
-    Route::get('sales-analytics', [SalesController::class, 'index'])->name('sales-analytics');
     
     // POS System - Only Admin, Manager, and Cashier can access
     Route::middleware('role:admin,manager,cashier')->group(function () {
@@ -101,22 +98,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Toggle availability
         Route::patch('/menu/{id}/toggle', [MenuManagementController::class, 'toggleAvailability'])
              ->name('menu.toggle');
+        
+        Route::get('sales-analytics', [SalesController::class, 'index'])->name('sales-analytics');
     });
     
     // Reports - Admin and Manager only  
-    // Route::middleware('role:admin,manager')->group(function () {
-    //     Route::get('reports', [ReportsController::class, 'index'])->name('reports');
-    // });
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('reports', [ReportsController::class, 'index'])->name('reports');
+    });
     
     // Kitchen Display - Kitchen Staff, Manager, Admin
-    // Route::middleware('role:admin,manager,kitchen_staff')->group(function () {
-    //     Route::get('kitchen', [KitchenController::class, 'index'])->name('kitchen');
-    // });
+    Route::middleware('role:admin,manager,kitchen_staff')->group(function () {
+        Route::get('kitchen', [KitchenController::class, 'index'])->name('kitchen');
+    });
     
     // User Management - Admin only
-    // Route::middleware('role:admin')->group(function () {
-    //     Route::resource('users', UserManagementController::class);
-    // });
+    Route::middleware('role:admin')->group(function () {
+        Route::resource('users', UserManagementController::class);
+    });
 });
 
 require __DIR__.'/settings.php';

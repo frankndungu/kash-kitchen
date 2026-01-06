@@ -59,7 +59,6 @@ interface ShowProps {
 }
 
 export default function Show({ user, order }: ShowProps) {
-    // Safely handle order data
     if (!order || !order.order_number) {
         return (
             <AppLayout>
@@ -91,7 +90,7 @@ export default function Show({ user, order }: ShowProps) {
         },
         {
             title: `Order #${order.order_number}`,
-            href: `#`,
+            href: '#',
         },
     ];
 
@@ -118,7 +117,6 @@ export default function Show({ user, order }: ShowProps) {
             cancelled:
                 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-200 dark:border-red-700',
         };
-
         return (
             styles[status as keyof typeof styles] ||
             'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
@@ -134,7 +132,6 @@ export default function Show({ user, order }: ShowProps) {
             refunded:
                 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600',
         };
-
         return (
             styles[status as keyof typeof styles] ||
             'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
@@ -201,7 +198,6 @@ export default function Show({ user, order }: ShowProps) {
                 <Head title={`Order #${order.order_number}`} />
 
                 <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
-                    {/* Header */}
                     <div className="mb-6 flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-black dark:text-white">
@@ -241,7 +237,6 @@ export default function Show({ user, order }: ShowProps) {
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-3">
-                        {/* Order Items */}
                         <div className="lg:col-span-2">
                             <div className="overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <div className="border-b-2 border-gray-200 bg-black p-4 dark:border-gray-700 dark:bg-gray-900">
@@ -339,9 +334,7 @@ export default function Show({ user, order }: ShowProps) {
                             </div>
                         </div>
 
-                        {/* Order Details Sidebar */}
                         <div className="space-y-6">
-                            {/* Customer Information */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
                                     <User className="mr-2 h-5 w-5" />
@@ -386,7 +379,6 @@ export default function Show({ user, order }: ShowProps) {
                                 </div>
                             </div>
 
-                            {/* Payment Information */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 flex items-center text-lg font-bold text-black dark:text-white">
                                     <Package className="mr-2 h-5 w-5" />
@@ -434,7 +426,6 @@ export default function Show({ user, order }: ShowProps) {
                                 </div>
                             </div>
 
-                            {/* Order Summary */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Order Summary
@@ -450,7 +441,7 @@ export default function Show({ user, order }: ShowProps) {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="font-medium text-gray-600 dark:text-gray-400">
-                                            Tax (16% VAT)
+                                            VAT (0%)
                                         </span>
                                         <span className="font-bold text-black dark:text-white">
                                             {formatCurrency(order.tax_amount)}
@@ -485,7 +476,6 @@ export default function Show({ user, order }: ShowProps) {
                     </div>
                 </div>
 
-                {/* Print-only Receipt */}
                 <div id="receipt-content" className="hidden print:block">
                     <div className="text-center">
                         <h1 className="text-xl font-bold">KASH KITCHEN</h1>
@@ -535,7 +525,7 @@ export default function Show({ user, order }: ShowProps) {
                             <span>{formatCurrency(order.subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span>Tax (16%):</span>
+                            <span>VAT (0%):</span>
                             <span>{formatCurrency(order.tax_amount)}</span>
                         </div>
                         <div className="my-2 border-t border-gray-400"></div>

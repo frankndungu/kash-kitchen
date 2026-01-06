@@ -31,14 +31,15 @@ interface DashboardProps {
         role: string;
     };
     stats: {
-        todaySales: number;
+        todaySales: number | null;
         ordersToday: number;
         pendingOrders: number;
-        cashInDrawer: number;
-        mpesaSales: number;
+        cashInDrawer: number | null;
+        mpesaSales: number | null;
         lowStockCount: number;
         averageOrderTime: number;
         peakHour: string;
+        canViewSales?: boolean;
     };
     recentOrders: Array<{
         id: number;
@@ -272,24 +273,30 @@ export default function Dashboard({
                     </button>
                 </div>
 
-                {/* Statistics Cards */}
-                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="flex items-center space-x-3">
-                            <div className="rounded-full bg-green-100 p-2 dark:bg-green-900">
-                                <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    Today's Sales
-                                </p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {formatCurrency(stats?.todaySales || 0)}
-                                </p>
+                {/* Statistics Cards - Conditional Grid */}
+                <div
+                    className={`mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 ${stats?.canViewSales ? 'lg:grid-cols-4' : 'lg:grid-cols-2'}`}
+                >
+                    {/* Today's Sales - Only for Admin/Manager */}
+                    {stats?.canViewSales && (
+                        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                            <div className="flex items-center space-x-3">
+                                <div className="rounded-full bg-green-100 p-2 dark:bg-green-900">
+                                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        Today's Sales
+                                    </p>
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        {formatCurrency(stats?.todaySales || 0)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
+                    {/* Orders Today - Everyone can see */}
                     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center space-x-3">
                             <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900">
@@ -306,6 +313,7 @@ export default function Dashboard({
                         </div>
                     </div>
 
+                    {/* Pending Orders - Everyone can see */}
                     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                         <div className="flex items-center space-x-3">
                             <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-900">
@@ -322,21 +330,26 @@ export default function Dashboard({
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <div className="flex items-center space-x-3">
-                            <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900">
-                                <Banknote className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    Cash Drawer
-                                </p>
-                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {formatCurrency(stats?.cashInDrawer || 0)}
-                                </p>
+                    {/* Cash Drawer - Only for Admin/Manager */}
+                    {stats?.canViewSales && (
+                        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                            <div className="flex items-center space-x-3">
+                                <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900">
+                                    <Banknote className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        Cash Drawer
+                                    </p>
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        {formatCurrency(
+                                            stats?.cashInDrawer || 0,
+                                        )}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Main Content Grid - UNIFORM HEIGHT */}
@@ -397,7 +410,6 @@ export default function Dashboard({
                                                                 )}
                                                             </p>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {/* FIXED: Use proper time display */}
                                                                 {order.time_elapsed_display ||
                                                                     getTimeAgo(
                                                                         order.created_at,
@@ -479,7 +491,6 @@ export default function Dashboard({
                                                                 )}
                                                             </p>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {/* FIXED: Use proper time display */}
                                                                 {order.time_elapsed_display ||
                                                                     getTimeAgo(
                                                                         order.created_at,
@@ -595,36 +606,40 @@ export default function Dashboard({
                         </div>
                     </div>
 
-                    {/* Payment Methods */}
-                    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-                            Payment Methods
-                        </h3>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <Banknote className="h-4 w-4 text-gray-600" />
-                                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                                        Cash
+                    {/* Payment Methods - Only for Admin/Manager */}
+                    {stats?.canViewSales && (
+                        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                            <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+                                Payment Methods
+                            </h3>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <Banknote className="h-4 w-4 text-gray-600" />
+                                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                                            Cash
+                                        </span>
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {formatCurrency(
+                                            stats?.cashInDrawer || 0,
+                                        )}
                                     </span>
                                 </div>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {formatCurrency(stats?.cashInDrawer || 0)}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                    <Smartphone className="h-4 w-4 text-green-600" />
-                                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                                        M-Pesa
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <Smartphone className="h-4 w-4 text-green-600" />
+                                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                                            M-Pesa
+                                        </span>
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {formatCurrency(stats?.mpesaSales || 0)}
                                     </span>
                                 </div>
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {formatCurrency(stats?.mpesaSales || 0)}
-                                </span>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* System Status & Live Time */}
                     <div className="space-y-4">

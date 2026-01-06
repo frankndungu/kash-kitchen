@@ -18,12 +18,16 @@ class DashboardController extends Controller
         $user = $request->user();
         
         try {
+            // Check if user has admin/manager role
+            $canViewSales = $user->hasAnyRole(['admin', 'manager']);
+            
             // Set proper timezone and date ranges
             $today = Carbon::now()->startOfDay();
             $todayEnd = Carbon::now()->endOfDay();
             
             Log::info('Dashboard loading', [
                 'user_id' => $user->id,
+                'can_view_sales' => $canViewSales,
                 'today_start' => $today->toDateTimeString(),
                 'today_end' => $todayEnd->toDateTimeString(),
             ]);
@@ -56,16 +60,17 @@ class DashboardController extends Controller
             // Peak hour calculation
             $peakHour = $this->getPeakHour($today, $todayEnd);
 
-            // Build stats object
+            // Build stats object - hide sales data from cashiers
             $stats = [
-                'todaySales' => (float) $todaySales,
+                'todaySales' => $canViewSales ? (float) $todaySales : null,
                 'ordersToday' => (int) $ordersToday,
                 'pendingOrders' => (int) $pendingOrders,
-                'cashInDrawer' => (float) $cashTotal,
-                'mpesaSales' => (float) $mpesaTotal,
+                'cashInDrawer' => $canViewSales ? (float) $cashTotal : null,
+                'mpesaSales' => $canViewSales ? (float) $mpesaTotal : null,
                 'lowStockCount' => (int) $lowStockCount,
                 'averageOrderTime' => 15, // Static for now
                 'peakHour' => $peakHour,
+                'canViewSales' => $canViewSales,
             ];
 
             Log::info('Stats calculated', $stats);
@@ -236,14 +241,15 @@ class DashboardController extends Controller
                     'role' => 'User',
                 ],
                 'stats' => [
-                    'todaySales' => 0,
+                    'todaySales' => null,
                     'ordersToday' => 0,
                     'pendingOrders' => 0,
-                    'cashInDrawer' => 0,
-                    'mpesaSales' => 0,
+                    'cashInDrawer' => null,
+                    'mpesaSales' => null,
                     'lowStockCount' => 0,
                     'averageOrderTime' => 0,
                     'peakHour' => 'N/A',
+                    'canViewSales' => false,
                 ],
                 'activeOrders' => [],
                 'recentOrders' => [],

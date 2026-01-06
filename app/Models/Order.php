@@ -115,7 +115,7 @@ class Order extends Model
     public function calculateTotals()
     {
         $this->subtotal = $this->items->sum('item_total');
-        $this->tax_amount = $this->subtotal * 0.16; // 16% VAT
+        $this->tax_amount = 0; // Changed from 16% VAT to 0%
         $this->total_amount = $this->subtotal + $this->tax_amount - $this->discount_amount;
         $this->save();
     }

@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Banknote, Save, Smartphone, X } from 'lucide-react';
+import { Banknote, Save, Smartphone, Wallet, X } from 'lucide-react';
 import React from 'react';
 
 interface MenuItem {
@@ -104,6 +104,8 @@ export default function Edit({ user, order }: EditProps) {
 
         if (data.payment_method === 'cash') {
             setData('mpesa_reference', `CASH-${timestamp}-${randomStr}`);
+        } else if (data.payment_method === 'grubba') {
+            setData('mpesa_reference', `GRUBBA-${timestamp}-${randomStr}`);
         } else {
             setData('mpesa_reference', `MPESA-${timestamp}-${randomStr}`);
         }
@@ -114,7 +116,6 @@ export default function Edit({ user, order }: EditProps) {
             <Head title={`Edit Order #${order.order_number}`} />
 
             <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
-                {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-black dark:text-white">
@@ -127,10 +128,8 @@ export default function Edit({ user, order }: EditProps) {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Edit Form */}
                     <div className="lg:col-span-2">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Customer Information */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Customer Information
@@ -184,7 +183,6 @@ export default function Edit({ user, order }: EditProps) {
                                 </div>
                             </div>
 
-                            {/* Order Details */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Order Details
@@ -261,7 +259,6 @@ export default function Edit({ user, order }: EditProps) {
                                 </div>
                             </div>
 
-                            {/* Payment Information */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Payment Information
@@ -314,6 +311,27 @@ export default function Edit({ user, order }: EditProps) {
                                                     M-Pesa
                                                 </span>
                                             </label>
+                                            <label className="flex cursor-pointer items-center">
+                                                <input
+                                                    type="radio"
+                                                    value="grubba"
+                                                    checked={
+                                                        data.payment_method ===
+                                                        'grubba'
+                                                    }
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'payment_method',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="mr-2 text-red-600"
+                                                />
+                                                <Wallet className="mr-1 h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                                <span className="text-sm font-bold text-black dark:text-white">
+                                                    Grubba
+                                                </span>
+                                            </label>
                                         </div>
                                         {errors.payment_method && (
                                             <p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">
@@ -355,7 +373,6 @@ export default function Edit({ user, order }: EditProps) {
                                     </div>
                                 </div>
 
-                                {/* Transaction ID */}
                                 <div className="mt-4">
                                     <div className="flex items-center justify-between">
                                         <label className="mb-2 block text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300">
@@ -389,7 +406,6 @@ export default function Edit({ user, order }: EditProps) {
                                 </div>
                             </div>
 
-                            {/* Additional Notes */}
                             <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                                 <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
                                     Additional Notes
@@ -443,7 +459,6 @@ export default function Edit({ user, order }: EditProps) {
                                 </div>
                             </div>
 
-                            {/* Action Buttons */}
                             <div className="flex space-x-4">
                                 <button
                                     type="submit"
@@ -472,7 +487,6 @@ export default function Edit({ user, order }: EditProps) {
                         </form>
                     </div>
 
-                    {/* Order Items (Read-only) */}
                     <div className="space-y-6">
                         <div className="rounded-lg border-2 border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                             <h2 className="mb-4 text-lg font-bold text-black dark:text-white">
@@ -518,7 +532,7 @@ export default function Edit({ user, order }: EditProps) {
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-medium text-gray-600 dark:text-gray-400">
-                                        Tax (16% VAT)
+                                        VAT (0%)
                                     </span>
                                     <span className="font-bold text-black dark:text-white">
                                         {formatCurrency(order.tax_amount)}

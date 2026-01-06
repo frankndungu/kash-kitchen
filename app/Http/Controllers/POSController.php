@@ -112,7 +112,7 @@ class POSController extends Controller
             'user' => ['name' => $user->name, 'email' => $user->email],
             'categories' => $categories,
             'orderTypes' => ['dine_in', 'takeaway', 'delivery'],
-            'paymentMethods' => ['cash', 'mpesa'],
+            'paymentMethods' => ['cash', 'mpesa', 'grubba'], // ✅ Added grubba
         ]);
     }
 
@@ -206,7 +206,7 @@ class POSController extends Controller
             'order_type' => 'required|in:dine_in,takeaway,delivery',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'payment_method' => 'required|in:cash,mpesa',
+            'payment_method' => 'required|in:cash,mpesa,grubba', // ✅ Added grubba
             'payment_status' => 'required|in:pending,paid,failed,refunded',
             'mpesa_reference' => 'nullable|string|max:50',
             'order_status' => 'required|in:pending,confirmed,preparing,ready,completed,cancelled',
@@ -228,9 +228,12 @@ class POSController extends Controller
 
             // If payment status is being changed to paid and no transaction ID exists
             if ($validatedData['payment_status'] === 'paid' && empty($validatedData['mpesa_reference'])) {
-                $transactionId = $validatedData['payment_method'] === 'cash' 
-                    ? 'CASH-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8))
-                    : 'MPESA-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8));
+                $transactionId = match($validatedData['payment_method']) {
+                    'cash' => 'CASH-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8)),
+                    'mpesa' => 'MPESA-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8)),
+                    'grubba' => 'GRUBBA-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8)), // ✅ Added grubba
+                    default => 'TXN-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8))
+                };
                 $validatedData['mpesa_reference'] = $transactionId;
             }
 
@@ -273,7 +276,7 @@ class POSController extends Controller
             'order_type' => 'required|in:dine_in,takeaway,delivery',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'payment_method' => 'required|in:cash,mpesa',
+            'payment_method' => 'required|in:cash,mpesa,grubba', // ✅ Added grubba
             'items' => 'required|array|min:1',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -348,9 +351,12 @@ class POSController extends Controller
             $order->calculateTotals();
             \Log::info('Order totals calculated', ['total' => $order->total_amount]);
 
-            $transactionId = $validatedData['payment_method'] === 'cash' 
-                ? 'CASH-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8))
-                : 'MPESA-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8));
+            $transactionId = match($validatedData['payment_method']) {
+                'cash' => 'CASH-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8)),
+                'mpesa' => 'MPESA-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8)),
+                'grubba' => 'GRUBBA-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8)), // ✅ Added grubba
+                default => 'TXN-' . time() . '-' . strtoupper(substr(md5(uniqid()), 0, 8))
+            };
 
             $order->update(['mpesa_reference' => $transactionId]);
 
